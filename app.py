@@ -169,9 +169,9 @@ st.markdown("""
 # ==========================================
 I18N = {
     "zh": {
-        "pipeline": "分析迴路 (ENGINE PIPELINE)",
-        "p_equity": "企業個股深度診斷迴路",
-        "p_etf": "指數型 ETF 資產穿透迴路",
+        "pipeline": "模式選擇 / MODE",
+        "p_equity": "個股",
+        "p_etf": "ETF",
         "selection": "標的選擇 (SELECTION)",
         "hot_stocks": "熱門關注資產",
         "custom_stock": "自訂搜尋代碼",
@@ -223,9 +223,9 @@ I18N = {
         "no_news": "近 5 天內無重大突發新聞更新。"
     },
     "en": {
-        "pipeline": "ENGINE PIPELINE",
-        "p_equity": "Equity Deep Diagnostic Engine",
-        "p_etf": "Index ETF Look-Through Engine",
+        "pipeline": "MODE SELECTION",
+        "p_equity": "Stocks",
+        "p_etf": "ETFs",
         "selection": "SELECTION",
         "hot_stocks": "WATCHLIST HOT",
         "custom_stock": "CUSTOM TICKER",
