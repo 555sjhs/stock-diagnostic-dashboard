@@ -889,34 +889,32 @@ with tab_valuation:
 with tab_peers_news:
     st.markdown(f"<div class='oled-section-title'>{T['peers_title']}</div>", unsafe_allow_html=True)
     
-    # 判斷是否為 ETF 或大盤指數
-    is_curr_etf = info.get("quoteType") in ["ETF", "MUTUALFUND"] or ticker.startswith("^") or any(k in ticker for k in ["0050", "0056", "006208", "00878", "00919", "00929", "00940", "SPY", "QQQ", "SOXX", "VOO", "IVV", "VTI", "VT", "SMH"])
+    # 判斷是否為 ETF 或指數
+    etf_keywords = ["0050", "0056", "006208", "00878", "00919", "00929", "SPY", "QQQ", "SOXX", "VOO", "IVV", "VTI", "VT", "SMH"]
+    is_curr_etf = info.get("quoteType") in ["ETF", "MUTUALFUND"] or ticker.startswith("^") or any(k in ticker for k in etf_keywords)
 
     if is_curr_etf:
-        # ETF 自動分類比較池
         if ".TW" in ticker or (ticker.isdigit() and len(ticker) in [4, 5]):
-            peer_etfs = [ticker, "0050.TW", "006208.TW", "0056.TW", "00878.TW", "00919.TW"]
+            peer_list = [ticker, "0050.TW", "006208.TW", "0056.TW", "00878.TW", "00919.TW"]
         elif "SOX" in ticker or "SMH" in ticker:
-            peer_etfs = [ticker, "SOXX", "SMH", "QQQ", "SPY"]
+            peer_list = [ticker, "SOXX", "SMH", "QQQ", "SPY"]
         elif "QQQ" in ticker or "NDX" in ticker:
-            peer_etfs = [ticker, "QQQ", "SPY", "IWM", "DIA"]
+            peer_list = [ticker, "QQQ", "SPY", "IWM", "DIA"]
         else:
-            peer_etfs = [ticker, "SPY", "VOO", "IVV", "QQQ", "VTI"]
+            peer_list = [ticker, "SPY", "VOO", "IVV", "QQQ", "VTI"]
         
-        # 去除重複
-        seen_etfs = set()
-        clean_peer_etfs = [x for x in peer_etfs if not (x in seen_etfs or seen_etfs.add(x))][:5]
-
+        seen = set()
+        clean_etfs = [x for x in peer_list if not (x in seen or seen.add(x))][:5]
         etf_records = []
-        for e_sym in clean_peer_etfs:
+        for e_sym in clean_etfs:
             try:
                 et = yf.Ticker(e_sym)
                 e_inf = et.info
                 e_fast = dict(et.fast_info)
                 p_cur = e_fast.get("lastPrice") or e_inf.get("previousClose") or e_inf.get("navPrice", 0.0)
                 aum = e_inf.get("totalAssets", 0) or 0
-                is_tw_etf = ".TW" in e_sym
-                aum_usd_b = (aum / USD_TWD / 1e9) if is_tw_etf else (aum / 1e9)
+                is_tw = ".TW" in e_sym
+                aum_usd_b = (aum / USD_TWD / 1e9) if is_tw else (aum / 1e9)
                 exp_ratio = e_inf.get("annualReportExpenseRatio", 0.0)
                 div_yield = e_inf.get("yield", 0.0) or e_inf.get("trailingAnnualDividendYield", 0.0)
                 
@@ -938,55 +936,81 @@ with tab_peers_news:
         if etf_records:
             st.dataframe(pd.DataFrame(etf_records).set_index(list(etf_records[0].keys())[0]), use_container_width=True)
     else:
-        # 全市場動態同業探測引擎：依據 Sector 與 Industry 自動搜尋
-        cur_sector = info.get("sector", "")
-        cur_industry = info.get("industry", "")
-        
-        # 全球產業同業資料庫 (涵蓋所有板塊)
-        sector_pools = {
-            "Semiconductors": ["NVDA", "TSM", "AMD", "AVGO", "QCOM", "INTC", "ASML", "2330.TW", "2454.TW"],
-            "Software": ["MSFT", "ORCL", "CRM", "SAP", "ADBE", "INTU", "NOW"],
-            "Internet Content & Information": ["GOOGL", "META", "AMZN", "NFLX", "BIDU", "TCEHY"],
-            "Entertainment": ["DIS", "NFLX", "WBD", "CMCSA", "SONY", "PARA"],
-            "Consumer Electronics": ["AAPL", "SONY", "DELL", "HPQ", "2317.TW"],
-            "Auto Manufacturers": ["TSLA", "TM", "BYDDF", "GM", "F", "RIVN", "NIO"],
-            "Financial Data & Stock Exchanges": ["SPGI", "MCO", "CME", "ICE", "MSCI"],
-            "Banks": ["JPM", "BAC", "WFC", "C", "MS", "GS", "2881.TW", "2882.TW", "2886.TW"],
-            "Aerospace & Defense": ["BA", "LMT", "RTX", "NOC", "GD"],
-            "Oil & Gas": ["XOM", "CVX", "SHEL", "TTE", "BP"],
-            "Pharmaceutical": ["LLY", "NVO", "JNJ", "PFE", "ABBV", "MRK"]
+        # 真實產業對標庫 (依各行業細分龍頭)
+        INDUSTRY_MAP = {
+            # 運動運動鞋服與流行休閒
+            "FOOTWEAR_APPAREL": ["NKE", "LULU", "DECK", "SKX", "UAA"],
+            # 串流影視娛樂與傳媒
+            "MEDIA_ENTERTAINMENT": ["NFLX", "DIS", "WBD", "CMCSA", "PARA"],
+            # 半導體 IC 設計與晶圓代工
+            "SEMICONDUCTORS": ["NVDA", "TSM", "AMD", "AVGO", "QCOM", "INTC", "2330.TW", "2454.TW"],
+            # 消費電子與個人電腦硬體
+            "HARDWARE": ["AAPL", "DELL", "HPQ", "2317.TW", "MSI.TW"],
+            # 企業軟體與雲端運算
+            "SOFTWARE": ["MSFT", "ORCL", "CRM", "SAP", "ADBE", "NOW"],
+            # 網路電商與數位廣告
+            "INTERNET_RETAIL": ["AMZN", "BABA", "PDD", "EBAY", "MELI"],
+            # 社交媒體與網路服務
+            "SOCIAL_MEDIA": ["META", "GOOGL", "SNAP", "PINS"],
+            # 電動車與傳統汽車製造
+            "AUTOMOTIVE": ["TSLA", "TM", "BYDDF", "GM", "F", "RIVN"],
+            # 餐飲速食與連鎖咖啡
+            "RESTAURANTS": ["MCD", "SBUX", "YUM", "CMG", "QSR"],
+            # 全球銀行與金融服務
+            "BANKS": ["JPM", "BAC", "WFC", "C", "MS", "GS", "2881.TW", "2882.TW"],
+            # 製藥與生技醫療
+            "HEALTHCARE": ["LLY", "NVO", "JNJ", "PFE", "ABBV", "MRK"]
         }
 
-        # 匹配產業
-        target_peers = None
-        for k, v in sector_pools.items():
-            if k.lower() in cur_industry.lower() or k.lower() in cur_sector.lower():
-                target_peers = [p for p in v if p != ticker]
-                break
-        
-        if not target_peers:
-            if ".TW" in ticker:
-                target_peers = ["2330.TW", "2317.TW", "2454.TW", "2382.TW", "2308.TW"]
-            else:
-                target_peers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA"]
+        target_sym = ticker.replace("^", "").strip().upper()
+        cur_ind = (info.get("industry") or "").lower()
+        cur_sec = (info.get("sector") or "").lower()
 
-        final_peer_list = [ticker] + [p for p in target_peers if p != ticker][:4]
+        # 智能匹配所屬產業
+        matched_peers = None
+        if target_sym in ["NKE", "LULU", "DECK", "SKX", "UAA", "ADDYY"] or "footwear" in cur_ind or "apparel" in cur_ind:
+            matched_peers = INDUSTRY_MAP["FOOTWEAR_APPAREL"]
+        elif target_sym in ["NFLX", "DIS", "WBD", "CMCSA", "PARA"] or "entertainment" in cur_ind:
+            matched_peers = INDUSTRY_MAP["MEDIA_ENTERTAINMENT"]
+        elif target_sym in ["NVDA", "TSM", "AMD", "AVGO", "QCOM", "INTC", "2330.TW", "2454.TW", "ASML", "MU"] or "semiconductor" in cur_ind:
+            matched_peers = INDUSTRY_MAP["SEMICONDUCTORS"]
+        elif target_sym in ["AAPL", "DELL", "HPQ", "2317.TW"] or "consumer electronics" in cur_ind:
+            matched_peers = INDUSTRY_MAP["HARDWARE"]
+        elif target_sym in ["MSFT", "ORCL", "CRM", "SAP", "ADBE", "NOW"] or "software" in cur_ind:
+            matched_peers = INDUSTRY_MAP["SOFTWARE"]
+        elif target_sym in ["AMZN", "BABA", "PDD", "EBAY"] or "internet retail" in cur_ind:
+            matched_peers = INDUSTRY_MAP["INTERNET_RETAIL"]
+        elif target_sym in ["META", "GOOGL", "GOOG", "SNAP", "PINS"] or "internet content" in cur_ind:
+            matched_peers = INDUSTRY_MAP["SOCIAL_MEDIA"]
+        elif target_sym in ["TSLA", "TM", "BYDDF", "GM", "F", "RIVN"] or "auto" in cur_ind:
+            matched_peers = INDUSTRY_MAP["AUTOMOTIVE"]
+        elif target_sym in ["MCD", "SBUX", "YUM", "CMG"] or "restaurant" in cur_ind:
+            matched_peers = INDUSTRY_MAP["RESTAURANTS"]
+        elif target_sym.endswith(".TW") or target_sym.endswith(".TWO"):
+            matched_peers = ["2330.TW", "2317.TW", "2454.TW", "2382.TW", "2308.TW"]
+        else:
+            # 預設通用產業
+            matched_peers = [target_sym, "AAPL", "MSFT", "GOOGL", "AMZN"]
+
+        # 組合同業清單 (本股票置頂，其餘取前 4 檔真實同行)
+        final_peers = [target_sym] + [p for p in matched_peers if p != target_sym][:4]
 
         peer_records = []
-        for p_sym in final_peer_list:
+        for p_sym in final_peers:
             try:
                 ps = yf.Ticker(p_sym)
                 p_inf = ps.info
                 p_fast = dict(ps.fast_info)
                 p_curr = p_inf.get("currency") or ("TWD" if ".TW" in p_sym else "USD")
 
-                # 正確美元市值計算
+                # 正確美元市值計算：美股直接除以 1e9，台股才除以 USD_TWD
                 raw_mcap = p_fast.get("marketCap") or p_inf.get("marketCap", 0)
                 if p_curr == "TWD":
                     mcap_usd = (raw_mcap / USD_TWD) / 1e9 if raw_mcap else np.nan
                 else:
                     mcap_usd = (raw_mcap / 1e9) if raw_mcap else np.nan
 
+                # 官方滾動最新 TTM 比率
                 gm_val = p_inf.get("grossMargins")
                 gm_val = gm_val * 100 if gm_val is not None else np.nan
 
@@ -998,7 +1022,7 @@ with tab_peers_news:
 
                 fwd_pe = p_inf.get("forwardPE", np.nan)
 
-                # FCF/NI
+                # FCF/NI (最新年度)
                 fcf_ni = np.nan
                 try:
                     cfo = safe_extract(ps.cashflow, ["Operating Cash Flow", "OperatingCashFlow"]).iloc[0]
@@ -1019,7 +1043,7 @@ with tab_peers_news:
                 pe_col = "Forward P/E" if curr_lang == "en" else "前瞻 P/E"
 
                 peer_records.append({
-                    t_col: f"[TARGET] {p_sym}" if p_sym == ticker else p_sym,
+                    t_col: f"[TARGET] {p_sym}" if p_sym == target_sym else p_sym,
                     c_col: p_curr,
                     m_col: mcap_usd,
                     gm_col: gm_val,
