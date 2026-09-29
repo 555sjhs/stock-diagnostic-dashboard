@@ -566,12 +566,13 @@ tab_analytics, tab_fundamentals, tab_valuation, tab_peers_news = st.tabs([
 with tab_analytics:
     st.markdown(f"<div class='oled-section-title'>{T['tv_title']}</div>", unsafe_allow_html=True)
     
-    # 判斷是否為指數或 ETF
-    etf_tickers = ["0050", "0056", "006208", "00878", "00919", "00929", "SPY", "QQQ", "SOXX", "VOO", "IVV", "VTI", "VT", "SMH"]
-    is_etf_or_index = is_index or any(ticker.startswith(e) for e in etf_tickers)
+    
+    # 嚴格判斷是否為指數或 ETF (包含 ^TWII, ^NDX, ^GSPC, ^SOX, 0050, SPY, QQQ, SOXX 等)
+    etf_keywords = ["0050", "0056", "006208", "00878", "00919", "00929", "SPY", "QQQ", "SOXX", "VOO", "IVV", "VTI", "VT", "SMH", "DIA", "IWM", "TAIEX"]
+    is_etf_or_index = is_index or ticker.startswith("^") or any(k in ticker.upper() for k in etf_keywords)
 
     if is_etf_or_index:
-        # 指數與 ETF 採用 Yahoo Finance 原生資料自繪互動 K 線圖
+        # 指數與 ETF 採用 Yahoo Finance 原生數據，自繪 OLED 高清 K 線與成交量圖 (完全無 TradingView 限制)
         if not chart_1y.empty:
             df_k = chart_1y.copy()
             df_k["MA20"] = df_k["Close"].rolling(20).mean()
@@ -607,7 +608,7 @@ with tab_analytics:
         else:
             st.info("暫無即時 K 線行情數據。")
     else:
-        # 一般個股載入 TradingView 專業技術分析組件
+        # 一般個股才載入 TradingView 官方 Widget
         clean_sym = ticker.replace("^", "").strip().upper()
         if ticker.endswith(".TW") or (ticker.isdigit() and len(ticker) in [4, 5]):
             tv_symbol = f"TWSE:{ticker.replace('.TW', '')}"
