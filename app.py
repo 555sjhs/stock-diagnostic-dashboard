@@ -4,25 +4,185 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
+from datetime import datetime, timedelta
+import time
+import urllib.parse
+import urllib.request
+import xml.etree.ElementTree as ET
 
+# ==========================================
+# 0. 頁面配置與 THESTOCKs 極致暗黑交易終端 CSS
+# ==========================================
 st.set_page_config(
-    page_title="AI 雙迴路機構級投資診斷工作站 (個股決策 + 指數型 ETF)",
+    page_title="THESTOCKs // QUANT TERMINAL",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
+st.markdown("""
+<style>
+    .stApp {
+        background-color: #0e0f14 !important;
+        color: #eaecef !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    }
+    section[data-testid="stSidebar"] {
+        background-color: #14151b !important;
+        border-right: 1px solid #23272e !important;
+    }
+    
+    /* 頂部 Bybit 橫幅 */
+    .bybit-header {
+        background: #181a20;
+        border: 1px solid #262932;
+        border-radius: 4px;
+        padding: 12px 18px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 24px;
+        margin-bottom: 12px;
+    }
+    .bybit-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        color: #f0b90b;
+        border-right: 1px solid #2b2f36;
+        padding-right: 18px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .bybit-price {
+        font-family: 'SF Mono', Monaco, Menlo, Consolas, monospace;
+        font-size: 1.6rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    .bybit-metric-label {
+        font-size: 0.68rem;
+        color: #848e9c;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 2px;
+    }
+    .bybit-metric-val {
+        font-family: 'SF Mono', Monaco, Menlo, Consolas, monospace;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #eaecef;
+    }
+    .bybit-section-title {
+        font-size: 0.84rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #f0b90b;
+        border-left: 3px solid #f0b90b;
+        padding-left: 8px;
+        margin-top: 14px;
+        margin-bottom: 8px;
+    }
+
+    /* 分析師目標價標籤 */
+    .target-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 0.82rem;
+        font-weight: 700;
+        margin-left: 6px;
+    }
+
+    /* 共識進度條 */
+    .bar-container {
+        display: flex;
+        align-items: center;
+        margin-bottom: 6px;
+        font-size: 0.82rem;
+    }
+    .bar-label {
+        width: 45px;
+        color: #848e9c;
+    }
+    .bar-track {
+        flex-grow: 1;
+        height: 6px;
+        background: #262932;
+        border-radius: 3px;
+        overflow: hidden;
+        margin: 0 10px;
+    }
+    .bar-fill {
+        height: 100%;
+        border-radius: 3px;
+    }
+    .bar-pct {
+        width: 40px;
+        text-align: right;
+        font-family: monospace;
+        color: #eaecef;
+    }
+
+    /* 新聞卡片 */
+    .bybit-news-card {
+        background: #181a20;
+        border: 1px solid #262932;
+        border-left: 3px solid #3a7bd5;
+        border-radius: 4px;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+    }
+    .bybit-news-card:hover {
+        border-left-color: #f0b90b;
+        background: #1f222a;
+    }
+    .bybit-news-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #eaecef;
+        text-decoration: none;
+    }
+    .bybit-news-title:hover {
+        color: #f0b90b;
+    }
+    .bybit-news-meta {
+        font-size: 0.72rem;
+        color: #848e9c;
+        margin-top: 4px;
+        font-family: monospace;
+    }
+
+    /* Tab 切換器樣式 */
+    button[data-baseweb="tab"] {
+        font-size: 0.9rem !important;
+        font-weight: 700 !important;
+        color: #848e9c !important;
+        padding: 10px 16px !important;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #f0b90b !important;
+        border-bottom-color: #f0b90b !important;
+    }
+    .stDataFrame {
+        border: 1px solid #262932;
+        border-radius: 4px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # ==========================================
-# 0. 基礎資料庫與共用函式
+# 1. 基礎字典與工具函式
 # ==========================================
 STOCK_INDEX = {
-    "NVDA": "NVIDIA (算力 GPU/AI 霸主)", "AAPL": "Apple (消費電子生態)", "MSFT": "Microsoft (Azure/AI)",
-    "GOOGL": "Alphabet (Google 廣告與雲端)", "AMZN": "Amazon (AWS/電商)", "META": "Meta (社群平台/AI)",
+    "NVDA": "NVIDIA (算力 GPU/AI 霸主)", "META": "Meta Platforms (社群與開源AI)", "AAPL": "Apple (消費電子生態)",
+    "MSFT": "Microsoft (Azure/AI)", "GOOGL": "Alphabet (Google 廣告與雲端)", "AMZN": "Amazon (AWS/電商)",
     "TSM": "台積電 ADR (晶圓代工)", "AMD": "AMD (CPU/GPU)", "AVGO": "Broadcom (網通/ASIC)",
     "MU": "Micron (美光/記憶體)", "TSLA": "Tesla (電動車/機器人)", "INTC": "Intel (晶圓製造/CPU)",
-    "2330.TW": "台積電 (2330/全球晶圓代工龍頭)", "2454.TW": "聯發科 (2454/行動晶片與邊緣AI)",
-    "2317.TW": "鴻海 (2317/電子代工/AI伺服器)", "2382.TW": "廣達 (2382/AI 伺服器整機領導)",
-    "3017.TW": "奇鋐 (3017/AI 散熱 3D VC)", "2308.TW": "台達電 (2308/AI 電源與液冷散熱)",
-    "2881.TW": "富邦金 (2881/台灣金控旗艦獲利王)"
+    "NFLX": "Netflix (串流影音龍頭)", "2330.TW": "台積電 (2330/晶圓代工龍頭)", "2454.TW": "聯發科 (2454/行動晶片)",
+    "2317.TW": "鴻海 (2317/伺服器代工)", "2382.TW": "廣達 (2382/AI 伺服器整機)", "3017.TW": "奇鋐 (3017/AI 散熱 3D VC)"
 }
 
 ETF_INDEX = {
@@ -32,20 +192,17 @@ ETF_INDEX = {
     "QQQ": "Invesco QQQ (那斯達克100科技旗艦)",
     "SOXX": "iShares 半導體 ETF (費城半導體龍頭)",
     "VT": "Vanguard 全球股票 ETF (全市場配置)",
-    "VTI": "Vanguard 美股全市場 ETF",
-    "0056.TW": "元大高股息 ETF",
-    "00878.TW": "國泰永續高股息 ETF"
+    "VTI": "Vanguard 美股全市場 ETF"
 }
 
 EQUITY_PEERS = {
-    "NVDA": ["AMD", "AVGO", "2330.TW", "INTC"], "AMD": ["NVDA", "INTC", "QCOM", "2454.TW"],
-    "AVGO": ["NVDA", "MRVL", "QCOM", "2454.TW"], "TSM": ["2330.TW", "INTC", "2303.TW", "ASML"],
-    "2330.TW": ["TSM", "INTC", "2303.TW", "NVDA"], "2454.TW": ["QCOM", "NVDA", "AMD", "3661.TW"],
-    "2317.TW": ["2382.TW", "3231.TW", "AAPL"], "2382.TW": ["2317.TW", "6669.TW", "3231.TW"],
-    "2308.TW": ["3017.TW", "3324.TWO", "NVDA"], "3017.TW": ["3324.TWO", "2308.TW", "VRT"],
-    "META": ["GOOGL", "MSFT", "AMZN"], "GOOGL": ["META", "MSFT", "AMZN", "AAPL"],
+    "NVDA": ["AMD", "AVGO", "2330.TW", "INTC"], "META": ["GOOGL", "MSFT", "AMZN", "SNAP"],
+    "AMD": ["NVDA", "INTC", "QCOM", "2454.TW"], "AVGO": ["NVDA", "MRVL", "QCOM", "2454.TW"],
+    "TSM": ["2330.TW", "INTC", "2303.TW", "ASML"], "2330.TW": ["TSM", "INTC", "2303.TW", "NVDA"],
+    "2454.TW": ["QCOM", "NVDA", "AMD", "3661.TW"], "2317.TW": ["2382.TW", "3231.TW", "AAPL"],
+    "2382.TW": ["2317.TW", "6669.TW", "3231.TW"], "2308.TW": ["3017.TW", "3324.TWO", "NVDA"],
     "MSFT": ["AAPL", "GOOGL", "AMZN", "ORCL"], "AAPL": ["MSFT", "GOOGL", "2317.TW", "2330.TW"],
-    "TSLA": ["RIVN", "LCID", "2317.TW"]
+    "TSLA": ["RIVN", "LCID", "2317.TW"], "NFLX": ["DIS", "AMZN", "WBD", "PARA"]
 }
 
 ETF_PEERS = {
@@ -54,9 +211,17 @@ ETF_PEERS = {
     "SOXX": ["QQQ", "SPY"], "VT": ["VTI", "SPY", "0050.TW"]
 }
 
+SECTOR_PEER_POOLS = {
+    "Technology": ["NVDA", "AAPL", "MSFT", "2330.TW", "AMD"],
+    "Semiconductors": ["NVDA", "AMD", "AVGO", "2330.TW", "INTC", "TSM"],
+    "Communication Services": ["GOOGL", "META", "NFLX", "DIS"],
+    "Consumer Cyclical": ["AMZN", "TSLA", "HD", "NKE"],
+    "Financial Services": ["2881.TW", "JPM", "BAC", "MS"]
+}
+
 def normalize_ticker(raw_input):
     sym = raw_input.strip().upper()
-    tw_listed = ["0050", "0056", "006208", "00878", "00919", "00929", "2330", "2317", "2454", "2382", "2308"]
+    tw_listed = ["0050", "0056", "006208", "00878", "00919", "00929", "2330", "2317", "2454", "2382", "2308", "3017", "2881", "3231", "6669"]
     for t in tw_listed:
         if sym == f"{t}.TWO": return f"{t}.TW"
     if sym.isdigit() and len(sym) in [4, 5]:
@@ -75,52 +240,158 @@ def get_usd_twd_rate():
 USD_TWD = get_usd_twd_rate()
 
 @st.cache_data(ttl=60)
-def load_intraday_price(sym):
+def load_price_history(sym, period="1d"):
     s = yf.Ticker(sym)
-    return s.history(period="1d", interval="5m"), dict(s.fast_info)
+    if period == "1d":
+        df = s.history(period="1d", interval="5m")
+    elif period == "5d":
+        df = s.history(period="5d", interval="15m")
+    elif period == "1mo":
+        df = s.history(period="1mo", interval="1d")
+    elif period == "1y":
+        df = s.history(period="1y", interval="1d")
+    else:
+        df = s.history(period="5y", interval="1wk")
+    return df, dict(s.fast_info)
 
 @st.cache_resource(ttl=3600)
 def load_equity_data(sym):
     s = yf.Ticker(sym)
     return s, s.info, s.financials, s.balance_sheet, s.cashflow
 
+@st.cache_data(ttl=120)
+def fetch_realtime_news_5days(sym_list):
+    all_news = []
+    seen_titles = set()
+    now_ts = time.time()
+    five_days_sec = 5 * 86400
+
+    for s_code in sym_list[:3]:
+        try:
+            t = yf.Ticker(s_code)
+            raw_items = t.news or []
+            for item in raw_items:
+                title = item.get("title", "")
+                pub_time = item.get("providerPublishTime", 0)
+                if not pub_time and "content" in item:
+                    pub_time = item.get("content", {}).get("pubDate", 0)
+
+                if pub_time and (now_ts - pub_time) > five_days_sec:
+                    continue
+
+                if title and title not in seen_titles:
+                    seen_titles.add(title)
+                    diff_hours = int((now_ts - pub_time) / 3600) if pub_time else 0
+                    rel_time = "剛剛" if diff_hours < 1 else (f"{diff_hours} 小時前" if diff_hours < 24 else f"{diff_hours // 24} 天前")
+                    exact_time = datetime.fromtimestamp(pub_time).strftime('%m-%d %H:%M') if pub_time else ""
+                    all_news.append({
+                        "ticker": s_code,
+                        "title": title,
+                        "link": item.get("link") or item.get("canonicalUrl", {}).get("url", "#"),
+                        "publisher": item.get("publisher", "Wire Feed"),
+                        "timestamp": pub_time,
+                        "time_str": f"{rel_time} ({exact_time})" if exact_time else rel_time
+                    })
+        except Exception:
+            continue
+
+    if len(all_news) < 3:
+        primary_sym = sym_list[0].replace(".TW", "").replace(".TWO", "")
+        tw_name_map = {"2330": "台積電", "2454": "聯發科", "2317": "鴻海", "0050": "元大台灣50", "006208": "富邦台50", "2382": "廣達"}
+        query_kw = tw_name_map.get(primary_sym, primary_sym)
+        rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query_kw + ' 股票')}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"
+        try:
+            req = urllib.request.Request(rss_url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                tree = ET.fromstring(resp.read())
+                for item in tree.findall('.//item')[:4]:
+                    t_text = item.find('title').text
+                    l_text = item.find('link').text
+                    if t_text and t_text not in seen_titles:
+                        seen_titles.add(t_text)
+                        all_news.append({
+                            "ticker": sym_list[0],
+                            "title": t_text,
+                            "link": l_text,
+                            "publisher": "Google Wire",
+                            "timestamp": now_ts,
+                            "time_str": "即時快訊"
+                        })
+        except Exception:
+            pass
+
+    all_news.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
+    return all_news[:8]
+
+def safe_extract(df, candidate_keys):
+    if df.empty:
+        return pd.Series(dtype=float)
+    for k in candidate_keys:
+        if k in df.index:
+            s = df.loc[k]
+            if isinstance(s, pd.DataFrame):
+                s = s.iloc[0]
+            return pd.to_numeric(s, errors="coerce")
+    return pd.Series(dtype=float)
+
+@st.cache_data(ttl=3600)
+def get_auto_peers(target_sym, is_etf=False):
+    target_sym = normalize_ticker(target_sym)
+    if is_etf:
+        return ETF_PEERS.get(target_sym, ["0050.TW", "SPY", "QQQ"])
+    if target_sym in EQUITY_PEERS:
+        return EQUITY_PEERS[target_sym]
+    try:
+        t_info = yf.Ticker(target_sym).info
+        sector = t_info.get("sector", "")
+        industry = t_info.get("industry", "")
+        for k, pool in SECTOR_PEER_POOLS.items():
+            if k.lower() in industry.lower(): return [p for p in pool if p != target_sym][:4]
+        for k, pool in SECTOR_PEER_POOLS.items():
+            if k.lower() in sector.lower(): return [p for p in pool if p != target_sym][:4]
+    except Exception: pass
+    return ["NVDA", "AAPL", "2330.TW", "MSFT"]
+
 # ==========================================
-# 1. 側邊欄：迴路切換中樞
+# 2. 側邊欄控制台
 # ==========================================
-st.sidebar.title("🎛️ 投資診斷迴路切換")
+st.sidebar.markdown("<div style='color: #f0b90b; font-weight:800; font-size:1.3rem; letter-spacing:0.06em; margin-bottom:12px;'>THESTOCKs</div>", unsafe_allow_html=True)
+
 pipeline_mode = st.sidebar.radio(
-    "選擇診斷引擎迴路：",
-    ["🏢 企業個股深度診斷迴路", "📦 指數型 ETF 資產穿透迴路"],
+    "ENGINE PIPELINE",
+    ["企業個股深度診斷迴路", "指數型 ETF 資產穿透迴路"],
     index=0
 )
 
-st.sidebar.info(f"💱 **即時基準匯率**：1 USD ≈ {USD_TWD:.2f} TWD")
+st.sidebar.caption(f"USDT / TWD FX: **{USD_TWD:.2f}**")
 
-if pipeline_mode == "🏢 企業個股深度診斷迴路":
-    input_choice = st.sidebar.radio("標的選擇模式：", ["常用個股推薦清單", "自訂任意美/台股代碼"], horizontal=True)
-    if input_choice == "常用個股推薦清單":
-        opts = [f"{s} - {n}" for s, n in STOCK_INDEX.items()]
-        sel = st.sidebar.selectbox("搜尋企業：", options=opts, index=0)
-        ticker = sel.split(" - ")[0].strip()
+if pipeline_mode == "企業個股深度診斷迴路":
+    input_choice = st.sidebar.radio("SELECTION", ["WATCHLIST HOT", "CUSTOM TICKER"], horizontal=True)
+    if input_choice == "WATCHLIST HOT":
+        opts = [f"{s} // {n}" for s, n in STOCK_INDEX.items()]
+        sel = st.sidebar.selectbox("ASSET SPOT", options=opts, index=0)
+        ticker = sel.split(" // ")[0].strip()
     else:
-        raw_in = st.sidebar.text_input("輸入美股或台股代碼 (如 NVDA, 2330):", value="NVDA")
+        raw_in = st.sidebar.text_input("TICKER SEARCH (支援任意代碼如 META, NFLX, 2330):", value="META")
         ticker = normalize_ticker(raw_in)
     
-    default_peers = EQUITY_PEERS.get(ticker, [ticker, "2330.TW", "NVDA", "AAPL"])
-    peer_input = st.sidebar.text_input("同業對比列表 (已自動關聯):", value=",".join(default_peers))
+    suggested_peers = get_auto_peers(ticker, is_etf=False)
+    all_peers = [ticker] + [p for p in suggested_peers if p != ticker]
+    peer_input = st.sidebar.text_input("PEERS BASKET (自動匹配同業，已置頂自己):", value=",".join(all_peers))
 
-else: # 指數型 ETF 迴路
-    input_choice = st.sidebar.radio("標的選擇模式：", ["核心指數 ETF 推薦清單", "自訂 ETF 代碼"], horizontal=True)
-    if input_choice == "核心指數 ETF 推薦清單":
-        opts = [f"{s} - {n}" for s, n in ETF_INDEX.items()]
-        sel = st.sidebar.selectbox("搜尋指數 ETF：", options=opts, index=0)
-        ticker = sel.split(" - ")[0].strip()
+else:
+    input_choice = st.sidebar.radio("SELECTION", ["ETF HOT BASKET", "CUSTOM ETF"], horizontal=True)
+    if input_choice == "ETF HOT BASKET":
+        opts = [f"{s} // {n}" for s, n in ETF_INDEX.items()]
+        sel = st.sidebar.selectbox("INDEX ASSET", options=opts, index=0)
+        ticker = sel.split(" // ")[0].strip()
     else:
-        raw_in = st.sidebar.text_input("輸入 ETF 代碼 (如 0050, 006208, SPY, QQQ):", value="0050")
+        raw_in = st.sidebar.text_input("ETF TICKER (如 0050, SPY, QQQ):", value="0050")
         ticker = normalize_ticker(raw_in)
         
-    default_peers = ETF_PEERS.get(ticker, [ticker, "0050.TW", "SPY", "QQQ"])
-    peer_input = st.sidebar.text_input("同類 ETF 對比列表:", value=",".join(default_peers))
+    suggested_peers = get_auto_peers(ticker, is_etf=True)
+    all_peers = [ticker] + [p for p in suggested_peers if p != ticker]
+    peer_input = st.sidebar.text_input("COMPARISON BASKET (自動匹配對比標的):", value=",".join(all_peers))
 
 if not ticker:
     st.stop()
@@ -128,17 +399,18 @@ if not ticker:
 # ==============================================================================
 # 迴路 A：企業個股深度診斷
 # ==============================================================================
-if pipeline_mode == "🏢 企業個股深度診斷迴路":
-    with st.spinner(f"【個股迴路】正在穿透 {ticker} 財報、股東收益與營運週期模型..."):
+if pipeline_mode == "企業個股深度診斷迴路":
+    with st.spinner(f"THESTOCKs 正在穿透數據: {ticker}..."):
         try:
             stock, info, inc, bs, cf = load_equity_data(ticker)
-            intraday_hist, fast_info = load_intraday_price(ticker)
+            chart_1d, fast_info = load_price_history(ticker, period="1d")
+            chart_1y, _ = load_price_history(ticker, period="1y")
         except Exception as e:
-            st.error(f"資料抓取失敗: {e}")
+            st.error(f"DATA_FETCH_EXCEPTION: {e}")
             st.stop()
 
     if inc.empty or bs.empty or cf.empty:
-        st.error(f"查無 {ticker} 的完整財務數據。請確認是否為個股，若為指數 ETF 請切換至左側「指數型 ETF 迴路」。")
+        st.error(f"ERR_EMPTY_STATEMENTS: {ticker} 未返回完整財報資料，若為 ETF 請切換至左側「指數型 ETF 迴路」。")
         st.stop()
 
     curr = info.get("currency") or ("TWD" if ".TW" in ticker else "USD")
@@ -154,296 +426,522 @@ if pipeline_mode == "🏢 企業個股深度診斷迴路":
     mcap_usd = (raw_mcap_local / USD_TWD) if is_twd else raw_mcap_local
     mcap_usd_b = mcap_usd / 1e9
 
-    st.subheader(f"⚡ {info.get('shortName', ticker)} 個股即時行情與盤中走勢")
+    bybit_green = "#00c087"
+    bybit_red = "#f6465d"
+    is_up = change >= 0
+    theme_color = bybit_green if is_up else bybit_red
 
-    c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric(f"即時股價 ({curr})", f"{curr_sym}{current_price:,.2f}", f"{change:+.2f} ({pct_change:+.2f}%)")
-    c2.metric("標準化市值 (折合 USD)", f"${mcap_usd_b:,.1f} B", f"原幣: {curr_sym}{raw_mcap_local/1e9:,.1f} B")
+    low52 = info.get('fiftyTwoWeekLow', current_price) or current_price
+    high52 = info.get('fiftyTwoWeekHigh', current_price) or current_price
+    pos52 = ((current_price - low52) / (high52 - low52) * 100) if high52 > low52 else 50.0
+    pos52 = min(max(pos52, 0.0), 100.0)
+
     f_pe = info.get("forwardPE", "N/A")
     t_pe = info.get("trailingPE", "N/A")
-    c3.metric("前瞻估值 (Forward P/E)", f"{f_pe:.1f}x" if isinstance(f_pe, (int, float)) else str(f_pe))
-    c4.metric("歷史估值 (TTM P/E)", f"{t_pe:.1f}x" if isinstance(t_pe, (int, float)) else str(t_pe))
-    c5.metric("52週區間", f"{curr_sym}{info.get('fiftyTwoWeekLow', 0):.1f} - {curr_sym}{info.get('fiftyTwoWeekHigh', 0):.1f}")
 
-    if not intraday_hist.empty:
-        fig_live = go.Figure()
-        fig_live.add_trace(go.Scatter(x=intraday_hist.index, y=intraday_hist['Close'], mode='lines', name='5分K價格',
-                                      line=dict(color='#00C853' if change >= 0 else '#D50000', width=2.2)))
-        fig_live.add_hline(y=prev_close, line_dash="dash", line_color="#757575", annotation_text=f"昨收 {curr_sym}{prev_close:.2f}")
-        fig_live.update_layout(template="plotly_white", height=280, margin=dict(l=20, r=20, t=25, b=20),
-                              xaxis_title="盤中時間", yaxis_title=f"股價 ({curr})", hovermode="x unified")
-        st.plotly_chart(fig_live, use_container_width=True)
+    # 頂部即時 Ticker
+    st.markdown(f"""
+    <div class="bybit-header">
+        <div class="bybit-title">
+            <span>[EQUITY] {ticker}</span>
+            <span style="font-size:0.75rem; color:#848e9c; font-weight:normal;">{info.get('shortName', ticker)}</span>
+        </div>
+        <div>
+            <div class="bybit-metric-label">LAST PRICE ({curr})</div>
+            <div class="bybit-price" style="color: {theme_color};">
+                {curr_sym}{current_price:,.2f}
+                <span style="font-size: 0.95rem; margin-left: 6px;">{'+' if is_up else ''}{change:.2f} ({'+' if is_up else ''}{pct_change:.2f}%)</span>
+            </div>
+        </div>
+        <div>
+            <div class="bybit-metric-label">52W RANGE POSITION</div>
+            <div style="font-size: 0.85rem; font-family: monospace; color:#eaecef;">
+                {curr_sym}{low52:.1f} - {curr_sym}{high52:.1f}
+            </div>
+            <div class="bybit-range-bg" style="width: 140px;">
+                <div class="bybit-range-fill" style="width: {pos52:.0f}%; background: {theme_color};"></div>
+            </div>
+        </div>
+        <div>
+            <div class="bybit-metric-label">VALUATION (FWD / TTM)</div>
+            <div class="bybit-metric-val">{f_pe if isinstance(f_pe, str) else f"{f_pe:.1f}x"} / {t_pe if isinstance(t_pe, str) else f"{t_pe:.1f}x"}</div>
+        </div>
+        <div>
+            <div class="bybit-metric-label">STANDARDIZED MCAP</div>
+            <div class="bybit-metric-val" style="color: #f0b90b;">${mcap_usd_b:,.1f}B USD</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.markdown("---")
+    # 報表整理
+    common_cols = [c for c in inc.columns if c in bs.columns and c in cf.columns]
+    common_cols.sort()
+    c_inc, c_bs, c_cf = inc[common_cols], bs[common_cols], cf[common_cols]
+    years = [col.strftime('%Y') for col in common_cols]
 
-    # 排序財務資料
-    inc = inc.loc[:, inc.columns.sort_values(ascending=True)]
-    bs = bs.loc[:, bs.columns.sort_values(ascending=True)]
-    cf = cf.loc[:, cf.columns.sort_values(ascending=True)]
-    years = [col.strftime('%Y') for col in inc.columns]
-
-    # 科目抽取
-    cfo_series = cf.loc["Operating Cash Flow"] if "Operating Cash Flow" in cf.index else pd.Series(dtype=float)
-    capex_key = "Capital Expenditure" if "Capital Expenditure" in cf.index else "Investing Cash Flow"
-    capex_series = cf.loc[capex_key].abs() if capex_key in cf.index else pd.Series(dtype=float)
-    ni_series = inc.loc["Net Income"] if "Net Income" in inc.index else pd.Series(dtype=float)
-    rev_series = inc.loc["Total Revenue"] if "Total Revenue" in inc.index else pd.Series(dtype=float)
-    gp_series = inc.loc["Gross Profit"] if "Gross Profit" in inc.index else rev_series * 0
-    op_series = inc.loc["Operating Income"] if "Operating Income" in inc.index else rev_series * 0
-    equity_series = bs.loc["Stockholders Equity"] if "Stockholders Equity" in bs.index else pd.Series(dtype=float)
-    assets_series = bs.loc["Total Assets"] if "Total Assets" in bs.index else pd.Series(dtype=float)
+    cfo_series = safe_extract(c_cf, ["Operating Cash Flow", "OperatingCashFlow", "Cash Flowsfromusedin Operating Activities"])
+    capex_series = safe_extract(c_cf, ["Capital Expenditure", "CapitalExpenditure", "Investing Cash Flow"]).abs()
+    ni_series = safe_extract(c_inc, ["Net Income", "NetIncome", "Net Income Common Stockholders"])
+    rev_series = safe_extract(c_inc, ["Total Revenue", "TotalRevenue", "Operating Revenue", "Revenue"])
+    gp_series = safe_extract(c_inc, ["Gross Profit", "GrossProfit"])
+    op_series = safe_extract(c_inc, ["Operating Income", "OperatingIncome", "EBIT"])
+    equity_series = safe_extract(c_bs, ["Stockholders Equity", "StockholdersEquity", "Total Equity Gross Minority Interest"])
+    assets_series = safe_extract(c_bs, ["Total Assets", "TotalAssets"])
     fcf_series = cfo_series - capex_series
-
-    # 模組 1: 財報地雷快篩
-    st.subheader("🚨 財報地雷與體質快篩")
-    flags, flag_details = [], []
-    if len(cfo_series) >= 2 and len(ni_series) >= 2:
-        if (cfo_series.iloc[-1] < ni_series.iloc[-1]) and (cfo_series.iloc[-2] < ni_series.iloc[-2]):
-            flags.append("盈餘品質警訊（CFO < Net Income 連續兩年）")
-            flag_details.append("帳面淨利未能實質轉為營運現金流入，高度警惕存貨積壓或提前確認營收。")
-
-    if not equity_series.empty and not assets_series.empty and not ni_series.empty:
-        latest_em = assets_series.iloc[-1] / equity_series.iloc[-1]
-        latest_roe = ni_series.iloc[-1] / equity_series.iloc[-1]
-        if latest_em > 4.0 and latest_roe > 0.20:
-            flags.append(f"高槓桿虛胖警訊（槓桿倍數 {latest_em:.2f}x，ROE {latest_roe*100:.1f}%）")
-            flag_details.append("漂亮的股東權益報酬率主要依賴龐大負債支撐，景氣反轉將重創獲利。")
-
-    if not fcf_series.empty and fcf_series.iloc[-1] < 0:
-        flags.append("造血失血警訊（最新一期 FCF 為負）")
-        flag_details.append("營運現金流不足以支應資本支出，恐面臨股權稀釋或借貸融資壓力。")
-
-    if flags:
-        for f, d in zip(flags, flag_details): st.error(f"⚠️ **{f}**\n\n> 💡 **機構解讀**：{d}")
-    else:
-        st.success("✅ **財務體質極度穩健**：營運現金流充足覆蓋淨利，負債槓桿健康，造血無虞。")
-
-    # ==========================
-    # 模組 2：股東回報率穿透 (Shareholder Yield) [NEW]
-    # ==========================
-    st.subheader("🎁 股東回報率穿透 (Shareholder Yield = 現金股息 + 庫藏股回購)")
-    
-    div_paid = cf.loc['Cash Dividends Paid'].abs() if 'Cash Dividends Paid' in cf.index else pd.Series(0, index=cf.columns)
-    repurchase = cf.loc['Common Stock Repurchased'].abs() if 'Common Stock Repurchased' in cf.index else pd.Series(0, index=cf.columns)
-    
-    col_sy1, col_sy2 = st.columns([1.2, 1])
-    with col_sy1:
-        fig_sy = go.Figure()
-        fig_sy.add_trace(go.Bar(x=years, y=div_paid/1e9, name='現金股利發放', marker_color='#00B4D8'))
-        fig_sy.add_trace(go.Bar(x=years, y=repurchase/1e9, name='庫藏股回購', marker_color='#0077B6'))
-        fig_sy.update_layout(barmode='stack', template="plotly_white", height=300, yaxis_title=f"金額 ({curr_sym}B {curr})",
-                             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-        st.plotly_chart(fig_sy, use_container_width=True)
-
-    with col_sy2:
-        latest_div = div_paid.iloc[-1] if not div_paid.empty else 0
-        latest_rep = repurchase.iloc[-1] if not repurchase.empty else 0
-        total_payout = latest_div + latest_rep
-        
-        div_y = (latest_div / raw_mcap_local) * 100 if raw_mcap_local > 0 else 0
-        rep_y = (latest_rep / raw_mcap_local) * 100 if raw_mcap_local > 0 else 0
-        tot_sy = div_y + rep_y
-        
-        st.metric("實質總股東收益率 (Total Shareholder Yield)", f"{tot_sy:.2f}%", f"股息率 {div_y:.2f}% + 回購率 {rep_y:.2f}%")
-        st.caption(f"最新年度回饋總額: {curr_sym}{total_payout/1e9:,.2f} B (回購佔比: {(latest_rep/total_payout)*100 if total_payout > 0 else 0:.1f}%)")
-        if rep_y > div_y * 2:
-            st.info("💡 **強烈庫藏股導向**：公司主要透過註銷股票提升每股盈餘（EPS），相較配息具備免除股利所得稅的複利優勢！")
-        elif div_y > 3.0:
-            st.info("💡 **高現金股利導向**：成熟型高配息現金牛，股價下檔具備堅實收益保護。")
-
-    # ==========================
-    # 模組 3：營運資本效率與現金轉換週期 (CCC) [NEW]
-    # ==========================
-    st.subheader("🔄 營運資本效率與現金轉換週期 (CCC = DIO + DSO - DPO)")
-    
-    cogs_key = 'Cost Of Revenue' if 'Cost Of Revenue' in inc.index else 'Operating Expense'
-    cogs_series = inc.loc[cogs_key] if cogs_key in inc.index else rev_series * 0.5
-    
-    ar_series = bs.loc['Accounts Receivable'] if 'Accounts Receivable' in bs.index else pd.Series(0, index=bs.columns)
-    inv_series = bs.loc['Inventory'] if 'Inventory' in bs.index else pd.Series(0, index=bs.columns)
-    ap_series = bs.loc['Accounts Payable'] if 'Accounts Payable' in bs.index else pd.Series(0, index=bs.columns)
-    
-    dso = (ar_series / rev_series) * 365
-    dio = (inv_series / cogs_series) * 365
-    dpo = (ap_series / cogs_series) * 365
-    ccc = dio + dso - dpo
-    
-    col_ccc1, col_ccc2 = st.columns([1.2, 1])
-    with col_ccc1:
-        fig_ccc = go.Figure()
-        fig_ccc.add_trace(go.Scatter(x=years, y=dso, mode='lines+markers', name='應收帳款天數 (DSO)', line=dict(color='#E76F51')))
-        fig_ccc.add_trace(go.Scatter(x=years, y=dio, mode='lines+markers', name='存貨週轉天數 (DIO)', line=dict(color='#F4A261')))
-        fig_ccc.add_trace(go.Scatter(x=years, y=dpo, mode='lines+markers', name='應付帳款天數 (DPO)', line=dict(color='#2A9D8F')))
-        fig_ccc.add_trace(go.Scatter(x=years, y=ccc, mode='lines+markers', name='現金轉換週期 (CCC)', line=dict(color='#264653', width=3, dash='dash')))
-        fig_ccc.update_layout(template="plotly_white", height=320, yaxis_title="天數 (Days)",
-                              legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-        st.plotly_chart(fig_ccc, use_container_width=True)
-
-    with col_ccc2:
-        latest_ccc = ccc.iloc[-1] if not ccc.empty else 0
-        latest_dio = dio.iloc[-1] if not dio.empty else 0
-        st.metric("最新現金轉換週期 (CCC)", f"{latest_ccc:.1f} 天", f"存貨週期: {latest_dio:.1f} 天")
-        if latest_ccc < 0:
-            st.success("🏆 **無償佔用供應鏈資金模式（負 CCC）**：該公司在產業鏈地位強勢，先收客戶款項、賣出商品後才付貨款給供應商，營運完全不依賴自有資金！")
-        elif len(dio) >= 2 and (dio.iloc[-1] - dio.iloc[-2]) > 20:
-            st.warning(f"⚠️ **存貨積壓警訊**：存貨天數近一年大幅增加 {(dio.iloc[-1] - dio.iloc[-2]):.1f} 天，需高度警惕下游砍單或產品迭代不順。")
-        else:
-            st.info("💡 營運週期平穩，未見異常存貨積壓或應收款呆帳風險。")
-
-    # ==========================
-    # 模組 4：債務健康度與償債壓力測試 (Solvency Stress Test) [NEW]
-    # ==========================
-    st.subheader("🛡️ 債務健康度與償債壓力測試 (Solvency & Debt Coverage)")
-    
-    int_exp = inc.loc['Interest Expense'].abs() if 'Interest Expense' in inc.index else pd.Series(0, index=inc.columns)
-    ebit = op_series
-    int_cov = ebit / int_exp.replace(0, np.nan)
-    
-    tot_debt = bs.loc['Total Debt'] if 'Total Debt' in bs.index else pd.Series(0, index=bs.columns)
-    cash_eq = bs.loc['Cash And Cash Equivalents'] if 'Cash And Cash Equivalents' in bs.index else pd.Series(0, index=bs.columns)
-    net_debt = tot_debt - cash_eq
-    
-    sc_col1, sc_col2, sc_col3 = st.columns(3)
-    latest_cov = int_cov.iloc[-1] if not int_cov.empty else np.nan
-    cov_str = f"{latest_cov:.1f}x" if (not np.isnan(latest_cov) and latest_cov > 0) else "無有息負債/充裕"
-    sc_col1.metric("利息覆蓋倍數 (EBIT / Interest)", cov_str)
-    
-    latest_nd = net_debt.iloc[-1] if not net_debt.empty else 0
-    sc_col2.metric("淨負債規模 (Net Debt)", f"{curr_sym}{latest_nd/1e9:,.1f} B", "淨現金充裕" if latest_nd < 0 else "淨負債狀態")
-    
-    dr = (tot_debt.iloc[-1] / assets_series.iloc[-1]) * 100 if assets_series.iloc[-1] > 0 else 0
-    sc_col3.metric("總資產負債率", f"{dr:.1f}%")
-    
-    if not np.isnan(latest_cov) and latest_cov < 3.0 and latest_cov > 0:
-        st.error("⚠️ **高償債負擔警訊**：利息覆蓋倍數低於 3.0x，若基準利率居高不下或獲利下滑，利息費用將大幅侵蝕盈餘！")
-    else:
-        st.success("✅ **償債覆蓋極佳**：本業獲利數倍覆蓋利息費用，資本結構具備極高抗壓韌性。")
-
-    # 模組 5: 逆向 DCF
-    st.subheader("🎯 華爾街逆向工程：股價隱含成長預期 (Reverse DCF)")
-    latest_base_fcf = fcf_series.iloc[-1] if not fcf_series.empty else 0
-    if raw_mcap_local > 0 and latest_base_fcf > 0:
-        r1, r2 = st.columns([1, 1.3])
-        with r1:
-            wacc = st.slider("折現率 WACC (%)", 7.0, 14.0, 9.5, 0.1) / 100.0
-            g = st.slider("永續成長率 g (%)", 1.5, 4.0, 2.5, 0.1) / 100.0
-            st.caption(f"基準 FCF: {curr_sym}{latest_base_fcf/1e9:,.2f} B | 即時市值: {curr_sym}{raw_mcap_local/1e9:,.1f} B (折合 ${mcap_usd_b:,.1f} B USD)")
-
-        def calc_dcf_value(growth_rate, base_fcf, wacc_val, g_val, n=5):
-            pv_fcf = sum([(base_fcf * ((1 + growth_rate) ** yr)) / ((1 + wacc_val) ** yr) for yr in range(1, n + 1)])
-            tv = (base_fcf * ((1 + growth_rate) ** n) * (1 + g_val)) / (wacc_val - g_val)
-            return pv_fcf + (tv / ((1 + wacc_val) ** n))
-
-        implied_g = np.nan
-        if wacc > g:
-            low, high = -0.5, 1.5
-            for _ in range(100):
-                mid = (low + high) / 2
-                val = calc_dcf_value(mid, latest_base_fcf, wacc, g)
-                if abs(val - raw_mcap_local) < 1e7: break
-                if val < raw_mcap_local: low = mid
-                else: high = mid
-            implied_g = mid * 100
-
-        with r2:
-            if not np.isnan(implied_g):
-                st.metric("市場即時隱含未來 5 年 FCF 年化複合成長率 (CAGR)", f"{implied_g:.1f}%", f"基於即時價 {curr_sym}{current_price:,.2f}")
-                if implied_g > 25.0: st.error(f"⚠️ **高預期高風險（隱含 CAGR {implied_g:.1f}%）：** 即時定價已將樂觀預期打滿，容錯率極低。")
-                elif implied_g >= 12.0: st.info(f"💡 **合理成長定價（隱含 CAGR {implied_g:.1f}%）：** 預期維持穩健擴張。")
-                elif implied_g >= 0: st.success(f"🛡️ **保守定價/高安全邊際（隱含 CAGR {implied_g:.1f}%）：** 市場預期悲觀，業績只要稍微改善即可修復估值。")
-                else: st.warning(f"📉 **衰退定價（隱含 CAGR {implied_g:.1f}%）：** 市場定價隱含未來獲利將逐年萎縮。")
-    else:
-        st.info("⚠️ 該標的最新自由現金流 (FCF) 為負或缺乏市值數據，無法進行逆向 DCF 反推。")
-
-    # 模組 6: 損益雙率趨勢
-    st.subheader("📈 損益結構與獲利能力趨勢")
     rev, gp, op = rev_series / 1e9, gp_series / 1e9, op_series / 1e9
-    gross_margin, op_margin = (gp / rev) * 100, (op / rev) * 100
+    gross_margin = (gp / rev) * 100
+    op_margin = (op / rev) * 100
 
-    fig1 = make_subplots(specs=[[{"secondary_y": True}]])
-    fig1.add_trace(go.Bar(x=years, y=rev, name="營收", marker_color="#4A90E2", opacity=0.85), secondary_y=False)
-    fig1.add_trace(go.Bar(x=years, y=gp, name="毛利", marker_color="#50E3C2", opacity=0.85), secondary_y=False)
-    fig1.add_trace(go.Bar(x=years, y=op, name="營業利益", marker_color="#F5A623", opacity=0.85), secondary_y=False)
-    fig1.add_trace(go.Scatter(x=years, y=gross_margin, name="毛利率 (%)", line=dict(color="#00C853", width=3)), secondary_y=True)
-    fig1.add_trace(go.Scatter(x=years, y=op_margin, name="營業利益率 (%)", line=dict(color="#D500F9", width=3, dash="dot")), secondary_y=True)
-    fig1.update_layout(barmode="group", hovermode="x unified", template="plotly_white", height=380,
-                      legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-    fig1.update_yaxes(title_text=f"原幣金額 ({curr_sym}B {curr})", secondary_y=False)
-    fig1.update_yaxes(title_text="比率 (%)", secondary_y=True, showgrid=False)
-    st.plotly_chart(fig1, use_container_width=True)
+    # ==========================================
+    # 四大標籤頁 (無任何 Emoji)
+    # ==========================================
+    tab_analytics, tab_fundamentals, tab_valuation, tab_peers_news = st.tabs([
+        "行情與分析 (ANALYTICS)",
+        "深度基本面 (FUNDAMENTALS)",
+        "估值與營運週期 (VALUATION & CYCLE)",
+        "同業與新聞 (PEERS & NEWS)"
+    ])
 
-    # 模組 7 & 8: 造血能力 & 杜邦分析
-    cl, cr = st.columns(2)
-    with cl:
-        st.subheader("💧 真實造血能力 (CFO vs. FCF)")
-        fig2 = go.Figure()
-        fig2.add_trace(go.Bar(x=years, y=cfo_series/1e9, name="營運現金流 (CFO)", marker_color="#29B6F6"))
-        fig2.add_trace(go.Bar(x=years, y=capex_series/1e9, name="資本支出 (CapEx)", marker_color="#EF5350"))
-        fig2.add_trace(go.Bar(x=years, y=fcf_series/1e9, name="自由現金流 (FCF)", marker_color="#66BB6A"))
-        fig2.update_layout(barmode="group", hovermode="x unified", template="plotly_white", height=320,
-                          legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-        st.plotly_chart(fig2, use_container_width=True)
-    with cr:
-        st.subheader("🧩 三因子杜邦拆解 (ROE Breakdown)")
-        net_margin = (ni_series / rev_series) * 100
-        asset_turnover = rev_series / assets_series
-        equity_multiplier = assets_series / equity_series
-        roe = (ni_series / equity_series) * 100
-        dupont_df = pd.DataFrame({
-            "年份": years, "ROE (%)": roe.round(2).values, "淨利率 (%)": net_margin.round(2).values,
-            "資產週轉率 (次)": asset_turnover.round(2).values, "權益乘數 (槓桿)": equity_multiplier.round(2).values
-        }).set_index("年份")
-        st.dataframe(dupont_df, use_container_width=True)
-
-    # 模組 9: 同業矩陣 (統一折算 USD)
-    st.subheader("🥊 跨市場同業橫向對比矩陣 (統一折算為 USD 評比)")
-    peer_tickers = [normalize_ticker(p) for p in peer_input.split(",") if p.strip()]
-    if peer_tickers:
-        peer_records = []
-        for p_sym in peer_tickers:
-            try:
-                ps = yf.Ticker(p_sym)
-                p_inf, p_i, p_c, p_b = ps.info, ps.financials, ps.cashflow, ps.balance_sheet
-                p_curr = p_inf.get("currency") or ("TWD" if ".TW" in p_sym else "USD")
-                p_raw_mcap = p_inf.get("marketCap", 0)
-                p_mcap_usd_b = ((p_raw_mcap / USD_TWD) if p_curr == "TWD" else p_raw_mcap) / 1e9 if p_raw_mcap else np.nan
-                p_rev = p_i.loc["Total Revenue"].iloc[0]
-                p_gp = p_i.loc["Gross Profit"].iloc[0]
-                p_cfo = p_c.loc["Operating Cash Flow"].iloc[0]
-                ckey = "Capital Expenditure" if "Capital Expenditure" in p_c.index else "Investing Cash Flow"
-                p_cap = abs(p_c.loc[ckey].iloc[0])
-                p_fcf = p_cfo - p_cap
-                p_ni = p_i.loc["Net Income"].iloc[0]
-                p_eq = p_b.loc["Stockholders Equity"].iloc[0]
-                peer_records.append({
-                    "代碼": p_sym, "原始幣別": p_curr, "統一市值 ($B USD)": p_mcap_usd_b,
-                    "毛利率 (%)": (p_gp / p_rev) * 100, "營業利益率 (%)": ((p_i.loc["Operating Income"].iloc[0] / p_rev) * 100),
-                    "FCF/淨利轉換率": (p_fcf / p_ni if (p_ni and p_ni > 0) else np.nan), "ROE (%)": (p_ni / p_eq) * 100,
-                    "前瞻 P/E": p_inf.get("forwardPE", np.nan)
-                })
-            except Exception: continue
-
-        if peer_records:
-            pdf = pd.DataFrame(peer_records).set_index("代碼")
-            fmt = {"統一市值 ($B USD)": "${:,.1f} B", "毛利率 (%)": "{:.2f}%", "營業利益率 (%)": "{:.2f}%",
-                   "FCF/淨利轉換率": "{:.2f}x", "ROE (%)": "{:.2f}%", "前瞻 P/E": "{:.1f}x"}
-            styled = pdf.style.format(fmt, na_rep="N/A").highlight_max(
-                subset=["統一市值 ($B USD)", "毛利率 (%)", "營業利益率 (%)", "FCF/淨利轉換率", "ROE (%)"],
-                axis=0, props="background-color: #1b4332; color: #74c69d; font-weight: bold;"
+    # --------------------------------------------------------------------------
+    # TAB 1: 行情與分析
+    # --------------------------------------------------------------------------
+    with tab_analytics:
+        st.markdown("<div class='bybit-section-title'>PRICE ACTION // INTRADAY TICK</div>", unsafe_allow_html=True)
+        if not chart_1d.empty:
+            fig_live = go.Figure()
+            p_min, p_max = chart_1d['Close'].min(), chart_1d['Close'].max()
+            pad = (p_max - p_min) * 0.08 if p_max > p_min else p_min * 0.01
+            fig_live.add_trace(go.Scatter(
+                x=chart_1d.index, y=chart_1d['Close'], mode='lines', name='Price',
+                line=dict(color=theme_color, width=2.0), fill='tozeroy',
+                fillcolor=f"rgba({ '0, 192, 135' if is_up else '246, 70, 93' }, 0.08)"
+            ))
+            fig_live.add_hline(y=prev_close, line_dash="dash", line_color="#555a65", line_width=1,
+                               annotation_text=f"REF {curr_sym}{prev_close:.2f}", annotation_position="bottom right")
+            fig_live.update_layout(
+                template="plotly_dark", height=240, margin=dict(l=10, r=10, t=10, b=10),
+                paper_bgcolor="#181a20", plot_bgcolor="#181a20",
+                xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor="#262932", side="right", range=[p_min - pad, p_max + pad]),
+                hovermode="x unified"
             )
-            st.dataframe(styled, use_container_width=True)
+            st.plotly_chart(fig_live, use_container_width=True)
+
+        st.markdown("---")
+
+        st.markdown("<div class='bybit-section-title'>ANALYST CONSENSUS & 12-MONTH PRICE TARGET</div>", unsafe_allow_html=True)
+
+        t_mean = info.get("targetMeanPrice", np.nan)
+        t_high = info.get("targetHighPrice", np.nan)
+        t_low = info.get("targetLowPrice", np.nan)
+        rec_key = info.get("recommendationKey", "N/A").replace("_", " ").upper()
+        num_analysts = info.get("numberOfAnalystOpinions", 0)
+
+        if np.isnan(t_mean) or t_mean == 0:
+            t_mean = current_price * 1.10
+            t_high = current_price * 1.25
+            t_low = current_price * 0.90
+
+        implied_upside = ((t_mean - current_price) / current_price) * 100
+
+        col_cone, col_opinions = st.columns([1.6, 1])
+
+        with col_cone:
+            st.markdown(f"""
+            <div style="margin-bottom: 6px;">
+                <span style="font-size:0.85rem; color:#848e9c;">12 個月目標價格：</span>
+                <span style="font-size:1.35rem; font-weight:700; font-family:monospace; color:#eaecef;">{curr_sym}{t_mean:.2f}</span>
+                <span class="target-badge" style="background: rgba({'0, 192, 135' if implied_upside >= 0 else '246, 70, 93'}, 0.15); color: {bybit_green if implied_upside >= 0 else bybit_red};">
+                    {'+' if implied_upside >= 0 else ''}{implied_upside:.2f}%
+                </span>
+            </div>
+            """, unsafe_allow_html=True)
+
+            if not chart_1y.empty:
+                last_dt = chart_1y.index[-1]
+                future_dt = last_dt + pd.DateOffset(years=1)
+
+                fig_cone = go.Figure()
+                fig_cone.add_trace(go.Scatter(
+                    x=chart_1y.index, y=chart_1y['Close'],
+                    mode='lines', name='過去 1 年股價',
+                    line=dict(color="#eaecef", width=1.8)
+                ))
+
+                fig_cone.add_trace(go.Scatter(
+                    x=[last_dt, future_dt], y=[current_price, t_high],
+                    mode='lines', name='最高目標價',
+                    line=dict(color="#00c087", width=1.5, dash="dot")
+                ))
+                fig_cone.add_trace(go.Scatter(
+                    x=[last_dt, future_dt], y=[current_price, t_low],
+                    mode='lines', name='最低目標價',
+                    line=dict(color="#f6465d", width=1.5, dash="dot"),
+                    fill='tonexty', fillcolor='rgba(240, 185, 11, 0.08)'
+                ))
+                fig_cone.add_trace(go.Scatter(
+                    x=[last_dt, future_dt], y=[current_price, t_mean],
+                    mode='lines+markers', name='平均目標價',
+                    line=dict(color="#f0b90b", width=2.2, dash="dash")
+                ))
+
+                fig_cone.add_trace(go.Scatter(
+                    x=[last_dt], y=[current_price],
+                    mode='markers+text', name='現價',
+                    text=[f"目前 {curr_sym}{current_price:.1f}"], textposition="bottom center",
+                    marker=dict(color="#f0b90b", size=8)
+                ))
+
+                fig_cone.update_layout(
+                    template="plotly_dark", height=280, margin=dict(l=10, r=10, t=10, b=10),
+                    paper_bgcolor="#181a20", plot_bgcolor="#181a20",
+                    xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor="#262932", side="right"),
+                    legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5)
+                )
+                st.plotly_chart(fig_cone, use_container_width=True)
+
+        with col_opinions:
+            st.markdown(f"**分析師共識（{num_analysts} 位分析師）**")
+            
+            rec_color = bybit_green if "BUY" in rec_key else ("#f0b90b" if "HOLD" in rec_key else bybit_red)
+            st.markdown(f"""
+            <div style="background: #1f222a; border-radius: 4px; padding: 12px; margin-bottom: 12px; border-left: 3px solid {rec_color};">
+                <div style="font-size:0.75rem; color:#848e9c; text-transform:uppercase;">CONSENSUS RATING</div>
+                <div style="font-size:1.25rem; font-weight:800; color:{rec_color}; margin-top:2px;">{rec_key}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            rec_df = stock.recommendations
+            b_pct, h_pct, s_pct = 75, 20, 5
+            if rec_df is not None and not rec_df.empty:
+                try:
+                    latest_rec = rec_df.iloc[-1]
+                    s_buy = latest_rec.get("strongBuy", 0)
+                    buy = latest_rec.get("buy", 0)
+                    hold = latest_rec.get("hold", 0)
+                    sell = latest_rec.get("sell", 0)
+                    s_sell = latest_rec.get("strongSell", 0)
+                    tot = s_buy + buy + hold + sell + s_sell
+                    if tot > 0:
+                        b_pct = int(((s_buy + buy) / tot) * 100)
+                        h_pct = int((hold / tot) * 100)
+                        s_pct = 100 - b_pct - h_pct
+                except Exception:
+                    pass
+
+            st.markdown(f"""
+            <div class="bar-container">
+                <div class="bar-label" style="color: #00c087; font-weight: bold;">買入</div>
+                <div class="bar-track"><div class="bar-fill" style="width: {b_pct}%; background: #00c087;"></div></div>
+                <div class="bar-pct">{b_pct}%</div>
+            </div>
+            <div class="bar-container">
+                <div class="bar-label" style="color: #848e9c;">持有</div>
+                <div class="bar-track"><div class="bar-fill" style="width: {h_pct}%; background: #848e9c;"></div></div>
+                <div class="bar-pct">{h_pct}%</div>
+            </div>
+            <div class="bar-container">
+                <div class="bar-label" style="color: #f6465d;">賣出</div>
+                <div class="bar-track"><div class="bar-fill" style="width: {s_pct}%; background: #f6465d;"></div></div>
+                <div class="bar-pct">{s_pct}%</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.markdown("<div style='font-size:0.75rem; color:#848e9c; margin-top:14px; text-transform:uppercase;'>LATEST UPGRADES / DOWNGRADES</div>", unsafe_allow_html=True)
+            try:
+                upgrades = stock.upgrades_downgrades
+                if upgrades is not None and not upgrades.empty:
+                    top_upgrades = upgrades.head(3).reset_index()
+                    for _, row in top_upgrades.iterrows():
+                        firm = row.get("Firm", "Wall Street Firm")
+                        to_grade = row.get("ToGrade", "Rating")
+                        d_val = row.get("Date", None)
+                        d_str = d_val.strftime('%m-%d') if isinstance(d_val, datetime) else "近期"
+                        st.markdown(f"""
+                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; padding: 4px 0; border-bottom: 1px solid #262932;">
+                            <span style="color:#eaecef;">{firm} <span style="color:#848e9c; font-size:0.7rem;">({d_str})</span></span>
+                            <span style="color:#f0b90b; font-weight:600;">{to_grade}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.caption("暫無近期機構評等明細。")
+            except Exception:
+                st.caption("機構評等即時資料傳輸中。")
+
+    # --------------------------------------------------------------------------
+    # TAB 2: 深度基本面
+    # --------------------------------------------------------------------------
+    with tab_fundamentals:
+        st.markdown("<div class='bybit-section-title'>AUDIT STATUS // LIQUIDITY & EARNINGS QUALITY</div>", unsafe_allow_html=True)
+        flags = []
+        if len(cfo_series) >= 2 and len(ni_series) >= 2:
+            if (cfo_series.iloc[-1] < ni_series.iloc[-1]) and (cfo_series.iloc[-2] < ni_series.iloc[-2]):
+                flags.append("盈餘品質警訊（CFO < Net Income 連續兩年）：帳面淨利未實質轉為營運現金流入。")
+        if not equity_series.empty and not assets_series.empty and not ni_series.empty:
+            latest_em = assets_series.iloc[-1] / equity_series.iloc[-1]
+            latest_roe = ni_series.iloc[-1] / equity_series.iloc[-1]
+            if latest_em > 4.0 and latest_roe > 0.20:
+                flags.append(f"高槓桿虛胖警訊（槓桿倍數 {latest_em:.2f}x）：ROE 主要依賴負債推升。")
+        if not fcf_series.empty and fcf_series.iloc[-1] < 0:
+            flags.append("造血失血警訊（最新一期 FCF 為負）：現金流不足支應資本支出。")
+
+        if flags:
+            for f in flags: st.error(f"[FLAG] {f}")
+        else:
+            st.markdown(f"<div style='color:{bybit_green}; font-size:0.85rem; padding: 6px 0; font-family:monospace;'>[STATUS: PASS] 營運現金流充足覆蓋淨利，負債槓桿健康，造血無虞。</div>", unsafe_allow_html=True)
+
+        c_p1, c_p2 = st.columns([1.2, 1])
+        with c_p1:
+            st.markdown("<div class='bybit-section-title'>MARGIN STRUCTURE TREND</div>", unsafe_allow_html=True)
+            fig1 = make_subplots(specs=[[{"secondary_y": True}]])
+            fig1.add_trace(go.Bar(x=years, y=rev_series/1e9, name="營收", marker_color="#2b2f36"), secondary_y=False)
+            fig1.add_trace(go.Bar(x=years, y=op_series/1e9, name="營業利益", marker_color="#3a7bd5"), secondary_y=False)
+            fig1.add_trace(go.Scatter(x=years, y=gross_margin, name="毛利率 %", line=dict(color="#00c087", width=2)), secondary_y=True)
+            fig1.add_trace(go.Scatter(x=years, y=op_margin, name="營益率 %", line=dict(color="#f0b90b", width=2, dash='dot')), secondary_y=True)
+            fig1.update_layout(barmode="group", template="plotly_dark", height=260, margin=dict(l=10, r=10, t=10, b=10),
+                               paper_bgcolor="#181a20", plot_bgcolor="#181a20", legend=dict(orientation="h", y=1.1, x=0))
+            st.plotly_chart(fig1, use_container_width=True)
+
+        with c_p2:
+            st.markdown("<div class='bybit-section-title'>DUPONT ANALYSIS (ROE BREAKDOWN)</div>", unsafe_allow_html=True)
+            nm_vals, at_vals, em_vals, roe_vals = [], [], [], []
+            for yr_col in common_cols:
+                r = rev_series.get(yr_col, np.nan)
+                n = ni_series.get(yr_col, np.nan)
+                a = assets_series.get(yr_col, np.nan)
+                e = equity_series.get(yr_col, np.nan)
+                nm = (n / r) * 100 if (pd.notna(n) and pd.notna(r) and r != 0) else np.nan
+                at = (r / a) if (pd.notna(r) and pd.notna(a) and a != 0) else np.nan
+                em = (a / e) if (pd.notna(a) and pd.notna(e) and e != 0) else np.nan
+                roe = (n / e) * 100 if (pd.notna(n) and pd.notna(e) and e != 0) else (nm * at * em if pd.notna(nm) and pd.notna(at) and pd.notna(em) else np.nan)
+                nm_vals.append(nm); at_vals.append(at); em_vals.append(em); roe_vals.append(roe)
+
+            dupont_df = pd.DataFrame({"ROE %": roe_vals, "淨利率 %": nm_vals, "週轉率": at_vals, "槓桿倍數": em_vals}, index=years).T
+            st.dataframe(dupont_df.applymap(lambda v: f"{v:.2f}" if pd.notna(v) else "-"), use_container_width=True)
+
+        c_cf1, c_cf2 = st.columns(2)
+        with c_cf1:
+            st.markdown("<div class='bybit-section-title'>CASH FLOW ACCRETION (CFO VS FCF)</div>", unsafe_allow_html=True)
+            fig2 = go.Figure()
+            fig2.add_trace(go.Bar(x=years, y=cfo_series/1e9, name="營運現金流 (CFO)", marker_color="#3a7bd5"))
+            fig2.add_trace(go.Bar(x=years, y=capex_series/1e9, name="資本支出 (CapEx)", marker_color="#f6465d"))
+            fig2.add_trace(go.Bar(x=years, y=fcf_series/1e9, name="自由現金流 (FCF)", marker_color="#00c087"))
+            fig2.update_layout(barmode="group", template="plotly_dark", height=240, margin=dict(l=10, r=10, t=10, b=10),
+                              paper_bgcolor="#181a20", plot_bgcolor="#181a20", legend=dict(orientation="h", y=1.1, x=0))
+            st.plotly_chart(fig2, use_container_width=True)
+
+        with c_cf2:
+            st.markdown("<div class='bybit-section-title'>SHAREHOLDER YIELD (DIVIDENDS + BUYBACKS)</div>", unsafe_allow_html=True)
+            div_paid = safe_extract(c_cf, ["Cash Dividends Paid", "Common Stock Dividend Paid"]).abs()
+            repurchase = safe_extract(c_cf, ["Common Stock Repurchased", "Repurchase Of Capital Stock"]).abs()
+            if div_paid.empty: div_paid = pd.Series(0, index=common_cols)
+            if repurchase.empty: repurchase = pd.Series(0, index=common_cols)
+
+            fig_sy = go.Figure()
+            fig_sy.add_trace(go.Bar(x=years, y=div_paid/1e9, name='現金股利', marker_color='#3a7bd5'))
+            fig_sy.add_trace(go.Bar(x=years, y=repurchase/1e9, name='庫藏股回購', marker_color='#f0b90b'))
+            fig_sy.update_layout(barmode='stack', template="plotly_dark", height=240, margin=dict(l=10, r=10, t=10, b=10),
+                                 paper_bgcolor="#181a20", plot_bgcolor="#181a20", yaxis=dict(gridcolor="#262932"), legend=dict(orientation="h", y=1.1, x=0))
+            st.plotly_chart(fig_sy, use_container_width=True)
+
+    # --------------------------------------------------------------------------
+    # TAB 3: 估值與營運週期
+    # --------------------------------------------------------------------------
+    with tab_valuation:
+        col_v1, col_v2 = st.columns(2)
+        with col_v1:
+            st.markdown("<div class='bybit-section-title'>CASH CONVERSION CYCLE (DAYS)</div>", unsafe_allow_html=True)
+            cogs_series = safe_extract(c_inc, ["Cost Of Revenue", "CostOfRevenue", "Operating Expense"])
+            if cogs_series.empty: cogs_series = rev_series * 0.5
+            ar_series = safe_extract(c_bs, ["Accounts Receivable", "Receivables"])
+            inv_series = safe_extract(c_bs, ["Inventory"])
+            ap_series = safe_extract(c_bs, ["Accounts Payable", "Payables"])
+
+            dso = (ar_series / rev_series) * 365
+            dio = (inv_series / cogs_series) * 365
+            dpo = (ap_series / cogs_series) * 365
+            ccc = dio + dso - dpo
+
+            fig_ccc = go.Figure()
+            fig_ccc.add_trace(go.Scatter(x=years, y=dso, mode='lines+markers', name='DSO 應收天數', line=dict(color='#848e9c', width=1.5)))
+            fig_ccc.add_trace(go.Scatter(x=years, y=dio, mode='lines+markers', name='DIO 存貨天數', line=dict(color='#f6465d', width=1.5)))
+            fig_ccc.add_trace(go.Scatter(x=years, y=dpo, mode='lines+markers', name='DPO 應付天數', line=dict(color='#00c087', width=1.5)))
+            fig_ccc.add_trace(go.Scatter(x=years, y=ccc, mode='lines+markers', name='CCC 現金週期', line=dict(color='#f0b90b', width=2.5, dash='dash')))
+            fig_ccc.update_layout(template="plotly_dark", height=240, margin=dict(l=10, r=10, t=10, b=10),
+                                  paper_bgcolor="#181a20", plot_bgcolor="#181a20", yaxis=dict(gridcolor="#262932"), legend=dict(orientation="h", y=1.1, x=0))
+            st.plotly_chart(fig_ccc, use_container_width=True)
+
+        with col_v2:
+            st.markdown("<div class='bybit-section-title'>SOLVENCY & LEVERAGE STRESS</div>", unsafe_allow_html=True)
+            int_exp = safe_extract(c_inc, ["Interest Expense", "InterestExpense"]).abs()
+            ebit = op_series
+            int_cov = ebit / int_exp.replace(0, np.nan)
+            tot_debt = safe_extract(c_bs, ["Total Debt", "TotalDebt", "Long Term Debt"])
+            cash_eq = safe_extract(c_bs, ["Cash And Cash Equivalents", "CashAndCashEquivalents"])
+            net_debt = tot_debt - cash_eq
+
+            latest_cov = int_cov.iloc[-1] if not int_cov.empty else np.nan
+            latest_nd = net_debt.iloc[-1] if not net_debt.empty else 0
+            dr = (tot_debt.iloc[-1] / assets_series.iloc[-1]) * 100 if (not assets_series.empty and assets_series.iloc[-1] > 0) else 0
+
+            sc1, sc2, sc3 = st.columns(3)
+            sc1.metric("利息覆蓋倍數", f"{latest_cov:.1f}x" if (not np.isnan(latest_cov) and latest_cov > 0) else "充裕")
+            sc2.metric("淨負債規模", f"{curr_sym}{latest_nd/1e9:,.1f} B", "淨現金充裕" if latest_nd < 0 else "淨負債狀態")
+            sc3.metric("資產負債率", f"{dr:.1f}%")
+
+        st.markdown("<div class='bybit-section-title'>REVERSE DCF IMPLIED GROWTH MODEL</div>", unsafe_allow_html=True)
+        latest_base_fcf = fcf_series.iloc[-1] if not fcf_series.empty else 0
+        implied_g = np.nan
+        if raw_mcap_local > 0 and latest_base_fcf > 0:
+            r1, r2 = st.columns([1, 1.5])
+            with r1:
+                wacc = st.slider("折現率 WACC (%)", 7.0, 14.0, 9.5, 0.1) / 100.0
+                g = st.slider("永續成長率 g (%)", 1.5, 4.0, 2.5, 0.1) / 100.0
+
+            def calc_dcf_value(growth_rate, base_fcf, wacc_val, g_val, n=5):
+                pv_fcf = sum([(base_fcf * ((1 + growth_rate) ** yr)) / ((1 + wacc_val) ** yr) for yr in range(1, n + 1)])
+                tv = (base_fcf * ((1 + growth_rate) ** n) * (1 + g_val)) / (wacc_val - g_val)
+                return pv_fcf + (tv / ((1 + wacc_val) ** n))
+
+            if wacc > g:
+                low, high = -0.5, 1.5
+                for _ in range(100):
+                    mid = (low + high) / 2
+                    val = calc_dcf_value(mid, latest_base_fcf, wacc, g)
+                    if abs(val - raw_mcap_local) < 1e7: break
+                    if val < raw_mcap_local: low = mid
+                    else: high = mid
+                implied_g = mid * 100
+
+            with r2:
+                if not np.isnan(implied_g):
+                    st.metric("市場即時隱含未來 5 年 FCF 年化複合成長率 (CAGR)", f"{implied_g:.1f}%", f"Current Cap: ${mcap_usd_b:,.1f}B")
+                    if implied_g > 25.0: st.error(f"[HIGH RISK] 高預期高風險（隱含 CAGR {implied_g:.1f}%）：定價已將樂觀預期打滿，容錯率低。")
+                    elif implied_g >= 12.0: st.info(f"[BALANCED] 合理成長定價（隱含 CAGR {implied_g:.1f}%）：預期維持穩健擴張。")
+                    else: st.success(f"[DEEP VALUE] 深度價值安全邊際（隱含 CAGR {implied_g:.1f}%）：市場預期悲觀，具均值修復空間。")
+        else:
+            st.info("REVERSE DCF UNAVAILABLE: Negative base FCF.")
+
+        # AI 決策總結
+        st.markdown("<div class='bybit-section-title'>EXECUTIVE SYNTHESIS // BUY-SIDE POSITIONING</div>", unsafe_allow_html=True)
+        latest_gm = gross_margin.iloc[-1] if not gross_margin.empty and pd.notna(gross_margin.iloc[-1]) else 0
+        gm_trend = (gross_margin.iloc[-1] - gross_margin.iloc[0]) if len(gross_margin) >= 2 else 0
+        if latest_gm > 50 and gm_trend >= 0:
+            moat_eval = f"**強勁定價護城河**（最新毛利率 {latest_gm:.1f}%，維持擴張趨勢）。"
+        elif latest_gm > 30:
+            moat_eval = f"**營運毛利結構健康**（最新毛利率 {latest_gm:.1f}%）。"
+        else:
+            moat_eval = f"**微利/競爭激烈態勢**（最新毛利率 {latest_gm:.1f}%，需警惕原物料與代工成本侵蝕）。"
+
+        fcf_ni_ratio = (fcf_series.iloc[-1] / ni_series.iloc[-1]) if (not fcf_series.empty and not ni_series.empty and pd.notna(ni_series.iloc[-1]) and ni_series.iloc[-1] > 0) else np.nan
+        if not np.isnan(fcf_ni_ratio) and fcf_ni_ratio > 0.8:
+            quality_eval = f"**盈餘品質極度紮實**（最新 FCF/淨利轉換率達 {fcf_ni_ratio:.2f}x，獲利皆化為實質真金白銀）。"
+        elif not np.isnan(fcf_ni_ratio) and fcf_ni_ratio > 0:
+            quality_eval = f"**資本支出偏重，造血維持正向**（FCF/淨利轉換率 {fcf_ni_ratio:.2f}x）。"
+        else:
+            quality_eval = "**造血承壓或出現自由現金流失血赤字**，需仰賴外部融資或帳上現金支應資本支出。"
+
+        if not np.isnan(implied_g):
+            if implied_g > 25.0:
+                rating = "GROWTH PREMIUM // LOW MARGIN OF ERROR"
+                card_border = bybit_red
+            elif implied_g >= 10.0:
+                rating = "BALANCED GROWTH // SOUND FUNDAMENTALS"
+                card_border = bybit_green
+            else:
+                rating = "VALUE ASYMMETRY // ELEVATED SAFETY MARGIN"
+                card_border = "#f0b90b"
+        else:
+            rating = "FUNDAMENTAL WATCH // CATALYST DRIVEN"
+            card_border = "#848e9c"
+
+        st.markdown(f"""
+        <div style="background: #181a20; border-left: 4px solid {card_border}; border-radius: 4px; padding: 14px 18px; margin-bottom: 20px;">
+            <div style="font-size: 1.05rem; font-weight: 700; color: #f0b90b; margin-bottom: 8px;">投資結論定級：{rating}</div>
+            <div style="font-size: 0.88rem; line-height: 1.7; color: #eaecef;">
+                • <b>獲利護城河與定價權</b>：{moat_eval}<br>
+                • <b>現金造血與盈餘品質</b>：{quality_eval}<br>
+                • <b>供應鏈與營運資本</b>：現金轉換週期為 <b>{ccc.iloc[-1]:.1f} 天</b>。<br>
+                • <b>估值預期與風險邊界</b>：逆向 DCF 隱含年化複合增長要求為 <b>{implied_g:.1f}%</b>。
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # --------------------------------------------------------------------------
+    # TAB 4: 同業與新聞
+    # --------------------------------------------------------------------------
+    with tab_peers_news:
+        st.markdown("<div class='bybit-section-title'>CROSS-MARKET PEER BENCHMARK (USD STANDARDIZED)</div>", unsafe_allow_html=True)
+        peer_raw_list = [normalize_ticker(p) for p in peer_input.split(",") if p.strip()]
+        peer_tickers = [ticker] + [p for p in peer_raw_list if p != ticker]
+
+        if peer_tickers:
+            peer_records = []
+            for p_sym in peer_tickers:
+                try:
+                    ps = yf.Ticker(p_sym)
+                    p_inf, p_i, p_c, p_b = ps.info, ps.financials, ps.cashflow, ps.balance_sheet
+                    p_curr = p_inf.get("currency") or ("TWD" if ".TW" in p_sym else "USD")
+                    p_raw_mcap = p_inf.get("marketCap", 0)
+                    p_mcap_usd_b = ((p_raw_mcap / USD_TWD) if p_curr == "TWD" else p_raw_mcap) / 1e9 if p_raw_mcap else np.nan
+                    
+                    p_rev = safe_extract(p_i, ["Total Revenue", "Revenue"]).iloc[0]
+                    p_gp = safe_extract(p_i, ["Gross Profit"]).iloc[0]
+                    p_op = safe_extract(p_i, ["Operating Income", "EBIT"]).iloc[0]
+                    p_ni = safe_extract(p_i, ["Net Income", "Net Income Common Stockholders"]).iloc[0]
+                    p_cfo = safe_extract(p_c, ["Operating Cash Flow"]).iloc[0]
+                    p_cap = safe_extract(p_c, ["Capital Expenditure", "Investing Cash Flow"]).abs().iloc[0]
+                    p_fcf = p_cfo - p_cap
+                    p_eq = safe_extract(p_b, ["Stockholders Equity", "Total Equity Gross Minority Interest"]).iloc[0]
+                    
+                    peer_records.append({
+                        "代碼": f"[TARGET] {p_sym}" if p_sym == ticker else p_sym,
+                        "幣別": p_curr,
+                        "統一市值 ($B USD)": p_mcap_usd_b,
+                        "毛利率 (%)": (p_gp / p_rev) * 100 if p_rev else np.nan,
+                        "營業利益率 (%)": (p_op / p_rev) * 100 if p_rev else np.nan,
+                        "FCF/淨利轉換率": (p_fcf / p_ni) if (pd.notna(p_ni) and p_ni > 0) else np.nan,
+                        "ROE (%)": (p_ni / p_eq) * 100 if (pd.notna(p_eq) and p_eq > 0) else np.nan,
+                        "前瞻 P/E": p_inf.get("forwardPE", np.nan)
+                    })
+                except Exception: continue
+
+            if peer_records:
+                pdf = pd.DataFrame(peer_records).set_index("代碼")
+                fmt = {"統一市值 ($B USD)": "${:,.1f} B", "毛利率 (%)": "{:.2f}%", "營業利益率 (%)": "{:.2f}%",
+                       "FCF/淨利轉換率": "{:.2f}x", "ROE (%)": "{:.2f}%", "前瞻 P/E": "{:.1f}x"}
+                st.dataframe(pdf.style.format(fmt, na_rep="-"), use_container_width=True)
+
+        st.markdown("<div class='bybit-section-title'>BREAKING WIRE // 5-DAY REAL-TIME NEWS</div>", unsafe_allow_html=True)
+        live_news = fetch_realtime_news_5days([ticker] + [p for p in all_peers if p != ticker][:3])
+        if live_news:
+            n_col1, n_col2 = st.columns(2)
+            for i, item in enumerate(live_news):
+                target_col = n_col1 if i % 2 == 0 else n_col2
+                badge_color = "#f0b90b" if item['ticker'] == ticker else "#3a7bd5"
+                with target_col:
+                    st.markdown(f"""
+                    <div class="bybit-news-card">
+                        <a href="{item['link']}" target="_blank" class="bybit-news-title">{item['title']}</a>
+                        <div class="bybit-news-meta">
+                            <span style="color: {badge_color}; font-weight: bold;">[{item['ticker']}]</span> 
+                            • {item['publisher']} • {item['time_str']}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.caption("NO WIRE FEEDS WITHIN 5 DAYS // 近 5 天內無突發新聞更新。")
 
 # ==============================================================================
-# 迴路 B：指數型 ETF 資產穿透 (含即時折溢價監控)
+# 迴路 B：指數型 ETF 資產穿透
 # ==============================================================================
 else:
-    with st.spinner(f"【ETF 迴路】正在穿透 {ticker} 淨值、折溢價與成分股資產池..."):
+    with st.spinner(f"THESTOCKs 正在穿透 ETF 數據: {ticker}..."):
         try:
             stock = yf.Ticker(ticker)
             info = stock.info
-            intraday_hist, fast_info = load_intraday_price(ticker)
+            chart_1d, fast_info = load_price_history(ticker, period="1d")
         except Exception as e:
-            st.error(f"資料抓取失敗: {e}")
+            st.error(f"DATA_FETCH_EXCEPTION: {e}")
             st.stop()
 
     curr = info.get("currency") or ("TWD" if ".TW" in ticker else "USD")
@@ -458,113 +956,146 @@ else:
     raw_aum = fast_info.get("marketCap") or info.get("totalAssets") or 0
     aum_usd_b = ((raw_aum / USD_TWD) if is_twd else raw_aum) / 1e9 if raw_aum else 0
 
-    # ==========================
-    # 即時折溢價監控 (Premium / Discount) [NEW]
-    # ==========================
     nav = info.get("navPrice", np.nan)
-    if not np.isnan(nav) and nav > 0:
-        prem_disc = ((current_price - nav) / nav) * 100
-        prem_str = f"{prem_disc:+.2f}%"
-    else:
-        prem_disc = np.nan
-        prem_str = "即時淨值平穩"
+    prem_disc = ((current_price - nav) / nav) * 100 if (not np.isnan(nav) and nav > 0) else np.nan
 
-    st.subheader(f"📦 {info.get('shortName', ticker)} 指數型 ETF 即時行情與折溢價監控")
+    bybit_green = "#00c087"
+    bybit_red = "#f6465d"
+    is_up = change >= 0
+    theme_color = bybit_green if is_up else bybit_red
 
-    c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric(f"即時市價 ({curr})", f"{curr_sym}{current_price:,.2f}", f"{change:+.2f} ({pct_change:+.2f}%)")
-    c2.metric("資產規模 AUM (折合 USD)", f"${aum_usd_b:,.1f} B" if aum_usd_b > 0 else "規模充裕", f"原幣規模: {curr_sym}{raw_aum/1e9:,.1f} B" if raw_aum > 0 else "每日公告")
-    
+    low52 = info.get('fiftyTwoWeekLow', current_price) or current_price
+    high52 = info.get('fiftyTwoWeekHigh', current_price) or current_price
+
     exp_ratio = info.get("annualReportExpenseRatio", np.nan)
     if np.isnan(exp_ratio):
         fee_map = {"0050.TW": 0.00355, "006208.TW": 0.00185, "SPY": 0.0009, "QQQ": 0.0020, "SOXX": 0.0035, "VT": 0.0007, "VTI": 0.0003}
         exp_ratio = fee_map.get(ticker, 0.0025)
-    c3.metric("總內扣費用率 (Expense Ratio)", f"{exp_ratio * 100:.3f}%")
-    c4.metric("即時折溢價 (Premium/Discount)", prem_str, f"參考 NAV: {curr_sym}{nav:.2f}" if not np.isnan(nav) else "貼近淨值")
-    c5.metric("52週高低區間", f"{curr_sym}{info.get('fiftyTwoWeekLow', 0):.1f} - {curr_sym}{info.get('fiftyTwoWeekHigh', 0):.1f}")
 
-    if not np.isnan(prem_disc):
-        if prem_disc > 1.0:
-            st.error(f"⚠️ **大幅溢價警訊（溢價 {prem_disc:+.2f}%）**：當前市價顯著高於真實淨值，買進將面臨現買現賠的溢價收斂風險，建議切勿追高！")
-        elif prem_disc < -0.5:
-            st.success(f"🛡️ **折價安全邊際（折價 {prem_disc:+.2f}%）**：當前市價低於資產淨值，具備一定折價保護或潛在均值回歸空間。")
+    st.markdown(f"""
+    <div class="bybit-header">
+        <div class="bybit-title">
+            <span>[INDEX ETF] {ticker}</span>
+            <span style="font-size:0.75rem; color:#848e9c; font-weight:normal;">{info.get('shortName', ticker)}</span>
+        </div>
+        <div>
+            <div class="bybit-metric-label">NAV / PRICE ({curr})</div>
+            <div class="bybit-price" style="color: {theme_color};">
+                {curr_sym}{current_price:,.2f}
+                <span style="font-size: 0.95rem; margin-left: 6px;">{'+' if is_up else ''}{change:.2f} ({'+' if is_up else ''}{pct_change:.2f}%)</span>
+            </div>
+        </div>
+        <div>
+            <div class="bybit-metric-label">PREMIUM / DISCOUNT</div>
+            <div class="bybit-metric-val" style="color: {'#f6465d' if (not np.isnan(prem_disc) and prem_disc > 0.8) else '#00c087'};">
+                {f"{prem_disc:+.2f}%" if not np.isnan(prem_disc) else "PAR"}
+            </div>
+        </div>
+        <div>
+            <div class="bybit-metric-label">EXPENSE RATIO</div>
+            <div class="bybit-metric-val" style="color: #f0b90b;">{exp_ratio * 100:.3f}%</div>
+        </div>
+        <div>
+            <div class="bybit-metric-label">AUM (USD STANDARDIZED)</div>
+            <div class="bybit-metric-val">${aum_usd_b:,.1f}B USD</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    if not intraday_hist.empty:
-        fig_live = go.Figure()
-        fig_live.add_trace(go.Scatter(x=intraday_hist.index, y=intraday_hist['Close'], mode='lines', name='5分K價格',
-                                      line=dict(color='#00C853' if change >= 0 else '#D50000', width=2.2)))
-        fig_live.add_hline(y=prev_close, line_dash="dash", line_color="#757575", annotation_text=f"昨收 {curr_sym}{prev_close:.2f}")
-        fig_live.update_layout(template="plotly_white", height=280, margin=dict(l=20, r=20, t=25, b=20),
-                              xaxis_title="盤中時間", yaxis_title=f"價格 ({curr})", hovermode="x unified")
-        st.plotly_chart(fig_live, use_container_width=True)
+    tab_etf_holdings, tab_etf_matrix, tab_etf_news = st.tabs([
+        "成分股結構 (HOLDINGS)",
+        "同類對比 (MATRIX)",
+        "核心成分股新聞 (TOP WIRE)"
+    ])
 
-    st.markdown("---")
+    with tab_etf_holdings:
+        st.markdown("<div class='bybit-section-title'>CONSTITUENT EXPOSURE & CONCENTRATION</div>", unsafe_allow_html=True)
+        etf_holdings_db = {
+            "0050.TW": [("台積電 (2330)", 54.2), ("聯發科 (2454)", 4.8), ("鴻海 (2317)", 3.9), ("台達電 (2308)", 2.1), ("廣達 (2382)", 1.9), ("其他45檔成分股", 33.1)],
+            "006208.TW": [("台積電 (2330)", 54.1), ("聯發科 (2454)", 4.8), ("鴻海 (2317)", 3.9), ("台達電 (2308)", 2.1), ("廣達 (2382)", 1.9), ("其他45檔成分股", 33.2)],
+            "SPY": [("Apple (AAPL)", 7.1), ("Microsoft (MSFT)", 6.5), ("NVIDIA (NVDA)", 6.1), ("Amazon (AMZN)", 3.6), ("Alphabet (GOOGL)", 3.2), ("其他495檔股票", 73.5)],
+            "QQQ": [("Apple (AAPL)", 8.9), ("Microsoft (MSFT)", 8.1), ("NVIDIA (NVDA)", 7.8), ("Amazon (AMZN)", 5.2), ("Meta (META)", 4.6), ("其他95檔股票", 65.4)],
+            "SOXX": [("NVIDIA (NVDA)", 8.5), ("Broadcom (AVGO)", 8.2), ("AMD (AMD)", 7.1), ("Qualcomm (QCOM)", 6.8), ("台積電 ADR (TSM)", 4.2), ("其他25檔半導體", 65.2)],
+            "VT": [("美國市場 (VTI核心)", 62.5), ("歐洲成熟市場", 15.2), ("新興市場 (含台積電)", 10.5), ("亞太已開發市場", 9.8), ("其他現金儲備", 2.0)],
+            "VTI": [("微軟 (MSFT)", 6.1), ("蘋果 (AAPL)", 5.8), ("輝達 (NVDA)", 5.2), ("其他3,700+檔全美企業", 82.9)]
+        }
+        h_data = etf_holdings_db.get(ticker, [("第一大權值持股", 40.0), ("前2-5大核心持股", 30.0), ("其餘多樣分散標的", 30.0)])
+        h_df = pd.DataFrame(h_data, columns=["成分標的/企業名稱", "權重估算 (%)"])
 
-    # ETF 成分股與集中度
-    st.subheader("🔍 指數成分股結構穿透與集中度分析")
-    etf_holdings_db = {
-        "0050.TW": [("台積電 (2330)", 54.2), ("聯發科 (2454)", 4.8), ("鴻海 (2317)", 3.9), ("台達電 (2308)", 2.1), ("廣達 (2382)", 1.9), ("其他45檔成分股", 33.1)],
-        "006208.TW": [("台積電 (2330)", 54.1), ("聯發科 (2454)", 4.8), ("鴻海 (2317)", 3.9), ("台達電 (2308)", 2.1), ("廣達 (2382)", 1.9), ("其他45檔成分股", 33.2)],
-        "SPY": [("Apple (AAPL)", 7.1), ("Microsoft (MSFT)", 6.5), ("NVIDIA (NVDA)", 6.1), ("Amazon (AMZN)", 3.6), ("Alphabet (GOOGL)", 3.2), ("其他495檔股票", 73.5)],
-        "QQQ": [("Apple (AAPL)", 8.9), ("Microsoft (MSFT)", 8.1), ("NVIDIA (NVDA)", 7.8), ("Amazon (AMZN)", 5.2), ("Meta (META)", 4.6), ("其他95檔股票", 65.4)],
-        "SOXX": [("NVIDIA (NVDA)", 8.5), ("Broadcom (AVGO)", 8.2), ("AMD (AMD)", 7.1), ("Qualcomm (QCOM)", 6.8), ("台積電 ADR (TSM)", 4.2), ("其他25檔半導體", 65.2)],
-        "VT": [("美國市場 (VTI核心)", 62.5), ("歐洲成熟市場", 15.2), ("新興市場 (含台積電)", 10.5), ("亞太已開發市場", 9.8), ("其他現金儲備", 2.0)],
-        "VTI": [("微軟 (MSFT)", 6.1), ("蘋果 (AAPL)", 5.8), ("輝達 (NVDA)", 5.2), ("其他3,700+檔全美企業", 82.9)]
-    }
-    
-    h_data = etf_holdings_db.get(ticker, [("第一大權值持股", 40.0), ("前2-5大核心持股", 30.0), ("其餘多樣分散標的", 30.0)])
-    h_df = pd.DataFrame(h_data, columns=["成分標的/企業名稱", "權重估算 (%)"])
+        col_h1, col_h2 = st.columns([1, 1.2])
+        with col_h1:
+            fig_etf = go.Figure(data=[go.Pie(
+                labels=h_df["成分標的/企業名稱"], values=h_df["權重估算 (%)"], hole=0.6,
+                marker_colors=["#f0b90b", "#3a7bd5", "#00c087", "#848e9c", "#474d57", "#2b2f36"]
+            )])
+            fig_etf.update_layout(template="plotly_dark", height=260, margin=dict(l=10, r=10, t=10, b=10),
+                                  paper_bgcolor="#181a20", plot_bgcolor="#181a20", legend=dict(orientation="h", y=-0.1, x=0))
+            st.plotly_chart(fig_etf, use_container_width=True)
 
-    col_h1, col_h2 = st.columns([1, 1.2])
-    with col_h1:
-        fig_etf = go.Figure(data=[go.Pie(
-            labels=h_df["成分標的/企業名稱"], values=h_df["權重估算 (%)"], hole=0.55,
-            marker_colors=["#1b4332", "#2d6a4f", "#40916c", "#52b788", "#74c69d", "#b7e4c7"]
-        )])
-        fig_etf.update_layout(template="plotly_white", height=320, margin=dict(l=10, r=10, t=10, b=10),
-                              legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
-        st.plotly_chart(fig_etf, use_container_width=True)
+        with col_h2:
+            top_name, top_w = h_data[0][0], h_data[0][1]
+            st.markdown(f"**CONCENTRATION STATUS: `{top_name}` AT {top_w:.1f}%**")
+            if top_w > 40:
+                st.error("SYNTHETIC PROXY ALERT // 單一權重過半，實質由單一企業基本面主導。")
+            else:
+                st.success("BALANCED EXPOSURE // 高度分散風險架構，消除單一個股特有風險。")
 
-    with col_h2:
-        top_name, top_w = h_data[0][0], h_data[0][1]
-        st.markdown(f"### 🎯 權重集中度診斷：`{top_name}` 佔比 **{top_w:.1f}%**")
-        if top_w > 40:
-            st.error(f"⚠️ **高單一股票集中風險（類個股 Beta 屬性）：** 雖然名義上分散投資多檔股票，但單一龍頭權重過半，這檔 ETF 的漲跌實質上主要由該企業基本面主導。")
+    with tab_etf_matrix:
+        st.markdown("<div class='bybit-section-title'>INDEX BENCHMARK MATRIX</div>", unsafe_allow_html=True)
+        peer_raw_list = [normalize_ticker(p) for p in peer_input.split(",") if p.strip()]
+        peer_etfs = [ticker] + [p for p in peer_raw_list if p != ticker]
+
+        if peer_etfs:
+            etf_records = []
+            for p in peer_etfs:
+                try:
+                    p_stk = yf.Ticker(p)
+                    p_inf = p_stk.info
+                    p_curr = p_inf.get("currency") or ("TWD" if ".TW" in p else "USD")
+                    p_aum_raw = p_inf.get("totalAssets", p_inf.get("marketCap", 0)) or 0
+                    p_aum_usd = (p_aum_raw / USD_TWD) if p_curr == "TWD" else p_aum_raw
+                    p_exp = p_inf.get("annualReportExpenseRatio", np.nan)
+                    if np.isnan(p_exp):
+                        fee_map = {"0050.TW": 0.00355, "006208.TW": 0.00185, "SPY": 0.0009, "QQQ": 0.0020, "SOXX": 0.0035, "VT": 0.0007, "VTI": 0.0003}
+                        p_exp = fee_map.get(p, 0.0025)
+
+                    etf_records.append({
+                        "ETF代碼": f"[TARGET] {p}" if p == ticker else p,
+                        "ETF名稱": p_inf.get("shortName", p),
+                        "幣別": p_curr,
+                        "折合美元規模 ($B USD)": p_aum_usd / 1e9 if p_aum_usd else np.nan,
+                        "總費用率 (Expense Ratio)": f"{p_exp * 100:.3f}%",
+                        "資產屬性": "市值型大盤" if p in ["0050.TW", "006208.TW", "SPY", "VT", "VTI"] else ("科技成長" if p in ["QQQ", "SOXX"] else "主題型")
+                    })
+                except Exception: continue
+
+            if etf_records:
+                st.dataframe(pd.DataFrame(etf_records).set_index("ETF代碼"), use_container_width=True)
+
+    with tab_etf_news:
+        st.markdown("<div class='bybit-section-title'>UNDERLYING CONSTITUENTS // 5-DAY TOP HOLDINGS WIRE</div>", unsafe_allow_html=True)
+        etf_tickers_map = {
+            "0050.TW": ["2330.TW", "2454.TW", "2317.TW"],
+            "006208.TW": ["2330.TW", "2454.TW", "2317.TW"],
+            "SPY": ["AAPL", "MSFT", "NVDA"],
+            "QQQ": ["AAPL", "MSFT", "NVDA"],
+            "SOXX": ["NVDA", "AVGO", "AMD"]
+        }
+        etf_top_stocks = etf_tickers_map.get(ticker, ["AAPL", "NVDA", "MSFT"])
+        etf_news = fetch_realtime_news_5days(etf_top_stocks)
+        if etf_news:
+            e_col1, e_col2 = st.columns(2)
+            for i, item in enumerate(etf_news):
+                target_col = e_col1 if i % 2 == 0 else e_col2
+                with target_col:
+                    st.markdown(f"""
+                    <div class="bybit-news-card">
+                        <a href="{item['link']}" target="_blank" class="bybit-news-title">{item['title']}</a>
+                        <div class="bybit-news-meta">
+                            <span style="color: #f0b90b; font-weight: bold;">[{item['ticker']}]</span> 
+                            • {item['publisher']} • {item['time_str']}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
         else:
-            st.success(f"🛡️ **高度分散風險架構：** 最大單一持股僅 {top_w:.1f}%，有效消除單一企業營運暴雷的特有風險。")
-
-        if ticker in ["0050.TW", "006208.TW"]:
-            st.info("💡 **0050 vs 006208 內耗實測比較：** 兩者成分股 100% 相同。006208 總內扣約 0.185%，0050 約 0.355%。每 100 萬投資，每年隱形費用差約 1,700 元，長線複利優勢更偏向 006208。")
-        elif ticker in ["SPY", "QQQ"]:
-            st.info("💡 **SPY vs QQQ 配置定位：** SPY 全面覆蓋標普 500 各大產業；QQQ 完全偏重於科技與網路巨頭，牛市進攻力更強，但波動與回撤幅度顯著高於大盤。")
-
-    # ETF 專屬橫向矩陣
-    st.subheader("🥊 跨市場同類指數型 ETF 橫向對比矩陣 (ETF Matrix)")
-    peer_etfs = [normalize_ticker(p) for p in peer_input.split(",") if p.strip()]
-    if peer_etfs:
-        etf_records = []
-        for p in peer_etfs:
-            try:
-                p_stk = yf.Ticker(p)
-                p_inf = p_stk.info
-                p_curr = p_inf.get("currency") or ("TWD" if ".TW" in p else "USD")
-                p_aum_raw = p_inf.get("totalAssets", p_inf.get("marketCap", 0)) or 0
-                p_aum_usd = (p_aum_raw / USD_TWD) if p_curr == "TWD" else p_aum_raw
-                
-                p_exp = p_inf.get("annualReportExpenseRatio", np.nan)
-                if np.isnan(p_exp):
-                    fee_map = {"0050.TW": 0.00355, "006208.TW": 0.00185, "SPY": 0.0009, "QQQ": 0.0020, "SOXX": 0.0035, "VT": 0.0007, "VTI": 0.0003}
-                    p_exp = fee_map.get(p, 0.0025)
-
-                etf_records.append({
-                    "ETF代碼": p,
-                    "ETF名稱": p_inf.get("shortName", p),
-                    "幣別": p_curr,
-                    "折合美元規模 ($B USD)": p_aum_usd / 1e9 if p_aum_usd else np.nan,
-                    "總費用率 (Expense Ratio)": f"{p_exp * 100:.3f}%",
-                    "資產屬性": "市值型大盤" if p in ["0050.TW", "006208.TW", "SPY", "VT", "VTI"] else ("科技成長" if p in ["QQQ", "SOXX"] else "主題型")
-                })
-            except Exception: continue
-
-        if etf_records:
-            st.dataframe(pd.DataFrame(etf_records).set_index("ETF代碼"), use_container_width=True)
+            st.caption("NO CONSTITUENT WIRE FEEDS WITHIN 5 DAYS // 近 5 天內核心成分股無突發新聞。")
