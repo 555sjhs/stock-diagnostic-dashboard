@@ -559,13 +559,13 @@ with tab_analytics:
     st.markdown(f"<div class='oled-section-title'>{T['tv_title']}</div>", unsafe_allow_html=True)
     
     if ticker in ["^TWII", "TAIEX", "IX0001"]:
-        tv_symbol = "TWSE:TAIEX"
+        tv_symbol = "TWSE:0050"
     elif ticker in ["^NDX", "NDX", "QQQ"]:
-        tv_symbol = "NASDAQ:NDX"
+        tv_symbol = "NASDAQ:QQQ"
     elif ticker in ["^GSPC", "SPX", "SPY"]:
-        tv_symbol = "SP:SPX"
+        tv_symbol = "AMEX:SPY"
     elif ticker in ["^SOX", "SOX", "SOXX"]:
-        tv_symbol = "INDEX:SOX"
+        tv_symbol = "NASDAQ:SOXX"
     elif ticker.endswith(".TW"):
         tv_symbol = f"TWSE:{ticker.replace('.TW', '')}"
     elif ticker.endswith(".TWO"):
