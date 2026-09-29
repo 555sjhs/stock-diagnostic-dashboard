@@ -424,6 +424,22 @@ if not st.session_state.terms_agreed:
 # ==========================================
 col_brand, col_search, col_lang = st.columns([1.5, 4.5, 1])
 
+with col_lang:
+    current_lang_idx = 0 if st.session_state.get("lang", "zh") == "zh" else 1
+    lang_btn = st.selectbox(
+        "LANG",
+        ["繁體中文", "English"],
+        index=current_lang_idx,
+        label_visibility="collapsed"
+    )
+    selected_lang = "zh" if lang_btn == "繁體中文" else "en"
+    if selected_lang != st.session_state.get("lang"):
+        st.session_state.lang = selected_lang
+        st.rerun()
+
+curr_lang = st.session_state.get("lang", "zh")
+T = I18N[curr_lang]
+
 with col_brand:
     st.markdown("<div style='font-size: 1.35rem; font-weight: 800; color: #ffffff; letter-spacing: 0.05em; padding-top: 4px;'>THESTOCKs</div>", unsafe_allow_html=True)
 
@@ -436,18 +452,6 @@ with col_search:
         label_visibility="collapsed"
     )
 
-with col_lang:
-    lang_btn = st.selectbox(
-        "LANG",
-        ["繁體中文", "English"],
-        index=0 if st.session_state.lang == "zh" else 1,
-        label_visibility="collapsed"
-    )
-    new_lang = "zh" if lang_btn == "繁體中文" else "en"
-    if new_lang != st.session_state.lang:
-        st.session_state.lang = new_lang
-        st.rerun()
-
 ticker = normalize_ticker(search_input)
 
 # ==========================================
@@ -455,7 +459,7 @@ ticker = normalize_ticker(search_input)
 # ==========================================
 st.markdown(f"<div class='market-section-title'>{T['market_summary']} &rsaquo;</div>", unsafe_allow_html=True)
 
-m_data = get_market_overview(lang=st.session_state.lang)
+m_data = get_market_overview(lang=curr_lang)
 if m_data:
     cols = st.columns(len(m_data))
     for i, m in enumerate(m_data):
@@ -494,7 +498,7 @@ if m_data:
             st.plotly_chart(fig_spark, use_container_width=True, config={'displayModeBar': False})
             
             # 點擊即可查看該大盤/指數詳細行情
-            btn_lbl = f"查看 {m['name']} ›" if st.session_state.lang == "zh" else f"View {m['name']} ›"
+            btn_lbl = f"查看 {m['name']} ›" if curr_lang == "zh" else f"View {m['name']} ›"
             if st.button(btn_lbl, key=f"btn_mkt_{i}", use_container_width=True):
                 st.session_state.search_ticker = m["ticker"]
                 st.rerun()
@@ -512,9 +516,10 @@ with st.spinner(f"Loading: {ticker}..."):
         st.error(f"DATA_FETCH_EXCEPTION: {e}")
         st.stop()
 
-if inc.empty or bs.empty or cf.empty:
-    st.error(f"ERR_EMPTY_STATEMENTS: {ticker} 財報數據不足。")
-    st.stop()
+is_index_or_etf = ticker.startswith("^") or ticker in ["QQQ", "SPY", "SOXX", "0050.TW", "006208.TW", "VT", "VTI"]
+
+if not is_index_or_etf and (inc.empty or bs.empty or cf.empty):
+    st.warning(f"NOTE: {ticker} 為指數或非個股標的，已自動啟用專業即時行情分析線路。")
 
 curr = info.get("currency") or ("TWD" if ".TW" in ticker else "USD")
 is_twd = (curr == "TWD")
