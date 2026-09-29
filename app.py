@@ -221,13 +221,13 @@ I18N = {
         "peers_title": "跨市場同業對比矩陣 (統一美元計價)",
         "news_title": "即時快訊 // 近 5 天動態消息面",
         "no_news": "近 5 天內無重大突發新聞更新。",
-        "dialog_title": "歡迎使用 THESTOCKs 量化分析終端",
-        "dialog_intro": "THESTOCKs 是一套專為專業投資人與研究員設計的機構級多市場分析平台，穿透個股與 ETF 的真實價值。",
-        "dialog_feat1": "⚡ **即時行情與 TradingView 互動圖表**：深度整合原生手感，支援多週期與指標。",
-        "dialog_feat2": "🎯 **華爾街預測與分析師共識**：12 個月目標價扇形圖，並穿透查看機構評等明細。",
-        "dialog_feat3": "📊 **穿透式財務基本面與估值**：杜邦分析、現金轉換週期 (CCC) 與逆向 DCF 成長模型。",
-        "dialog_disclaimer": "⚠️ **免責聲明**：本平台提供之數據與量化模型僅供學術研究與決策參考，不構成任何投資建議。市場有風險，投資需謹慎。",
-        "dialog_agree_btn": "我已充分理解並同意，開始使用終端",
+        "dialog_title": "THESTOCKs // 使用聲明",
+        "dialog_intro": "本終端提供即時行情、華爾街預測與財務估值模型穿透。",
+        "dialog_feat1": "• **市場數據**：TradingView 行情圖表與機構分析師共識",
+        "dialog_feat2": "• **量化財務**：杜邦拆解、營運週期 (CCC) 與逆向 DCF 估值",
+        "dialog_feat3": "",
+        "dialog_disclaimer": "免責聲明：所有數據僅供個人研究參考，不構成任何投資建議。",
+        "dialog_agree_btn": "同意並進入",
         "dialog_reopen_btn": "📖 終端使用說明 / 介紹",
     },
     "en": {
@@ -283,13 +283,13 @@ I18N = {
         "peers_title": "CROSS-MARKET PEER BENCHMARK (USD STANDARDIZED)",
         "news_title": "BREAKING WIRE // 5-DAY REAL-TIME NEWS",
         "no_news": "No wire feeds found within past 5 days.",
-        "dialog_title": "Welcome to THESTOCKs Quant Terminal",
-        "dialog_intro": "THESTOCKs is an institutional-grade multi-market terminal designed for transparent equity and ETF valuation.",
-        "dialog_feat1": "⚡ **Real-Time TradingView Terminal**: Native interactive charts with multi-period technical support.",
-        "dialog_feat2": "🎯 **Wall Street Consensus & 12M Cone**: Transparent analyst rating breakdown and price targets.",
-        "dialog_feat3": "📊 **Deep Fundamentals & Valuation**: DuPont breakdown, CCC working capital, and Reverse DCF models.",
-        "dialog_disclaimer": "⚠️ **Disclaimer**: All metrics and quantitative models are for academic and research purposes only, not financial advice.",
-        "dialog_agree_btn": "I Understand & Agree, Launch Terminal",
+        "dialog_title": "THESTOCKs // TERMS",
+        "dialog_intro": "Terminal provides market quotes, Street consensus, and valuation models.",
+        "dialog_feat1": "• **Market**: TradingView charting and institutional ratings",
+        "dialog_feat2": "• **Analytics**: DuPont analysis, CCC cycle, and Reverse DCF",
+        "dialog_feat3": "",
+        "dialog_disclaimer": "Notice: Data for research purposes only. Not investment advice.",
+        "dialog_agree_btn": "Agree & Enter",
         "dialog_reopen_btn": "📖 Platform Guide / Intro",
     }
 }
@@ -465,14 +465,13 @@ if "terms_agreed" not in st.session_state:
 @st.dialog(T["dialog_title"])
 def show_welcome_dialog():
     st.markdown(f"""
-    <div style="line-height: 1.6; color: #eaecef; font-size: 0.92rem;">
-        <p style="color: #f0b90b; font-weight: 600;">{T['dialog_intro']}</p>
-        <div style="background: #181a20; border: 1px solid #262932; border-radius: 6px; padding: 12px; margin: 12px 0;">
-            <p style="margin-bottom: 8px;">{T['dialog_feat1']}</p>
-            <p style="margin-bottom: 8px;">{T['dialog_feat2']}</p>
-            <p style="margin-bottom: 0px;">{T['dialog_feat3']}</p>
+    <div style="line-height: 1.5; color: #eaecef; font-size: 0.88rem;">
+        <p style="margin-bottom: 8px;">{T['dialog_intro']}</p>
+        <p style="margin-bottom: 4px; color: #848e9c;">{T['dialog_feat1']}</p>
+        <p style="margin-bottom: 12px; color: #848e9c;">{T['dialog_feat2']}</p>
+        <div style="font-size: 0.75rem; color: #5e6673; border-top: 1px solid #23272e; padding-top: 8px; margin-bottom: 12px;">
+            {T['dialog_disclaimer']}
         </div>
-        <p style="font-size: 0.8rem; color: #848e9c; margin-top: 10px;">{T['dialog_disclaimer']}</p>
     </div>
     """, unsafe_allow_html=True)
     if st.button(T["dialog_agree_btn"], use_container_width=True, type="primary"):
