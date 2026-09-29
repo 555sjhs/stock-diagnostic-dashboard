@@ -83,15 +83,6 @@ st.markdown("""
         margin-top: 14px;
         margin-bottom: 8px;
     }
-    .target-badge {
-        display: inline-block;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-family: monospace;
-        font-size: 0.82rem;
-        font-weight: 700;
-        margin-left: 6px;
-    }
     .bar-container {
         display: flex;
         align-items: center;
@@ -165,30 +156,30 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 1. 雙語國際化字典 (i18n Dictionary)
+# 1. 雙語國際化字典 (去 AI 感、冷靜終端風格)
 # ==========================================
 I18N = {
     "zh": {
-        "pipeline": "模式選擇 / MODE",
+        "pipeline": "模式選擇",
         "p_equity": "個股",
         "p_etf": "ETF",
-        "selection": "標的選擇 (SELECTION)",
-        "hot_stocks": "熱門關注資產",
-        "custom_stock": "自訂搜尋代碼",
-        "ticker_input": "輸入股票代碼 (如 NVDA, AAPL, 2330):",
-        "peers_basket": "同業標的組合 (PEERS BASKET):",
+        "selection": "標的選擇",
+        "hot_stocks": "熱門關注",
+        "custom_stock": "自訂代碼",
+        "ticker_input": "股票代碼 (例 NVDA, AAPL, 2330):",
+        "peers_basket": "對比標的組合:",
         "last_price": "最新價格",
-        "range_52w": "52週區間位置",
+        "range_52w": "52 週區間",
         "val_fwd_ttm": "估值倍數 (FWD / TTM)",
-        "mcap_usd": "標準化市值 (折合美元)",
+        "mcap_usd": "市值 (折合美元)",
         "tab_analytics": "行情與分析",
         "tab_fundamentals": "深度基本面",
         "tab_valuation": "估值與營運週期",
         "tab_peers_news": "同業與新聞",
         "tv_title": "即時行情",
         "target_12m": "12 個月目標價格 // 華爾街預測扇形圖",
-        "target_mean": "12 個月目標價格 (平均)",
-        "hist_trend": "過去 1 年走勢",
+        "target_mean": "12 個月目標價 (平均)",
+        "hist_trend": "歷史走勢",
         "t_high": "最高目標",
         "t_low": "最低目標",
         "t_mean_lbl": "平均目標",
@@ -198,59 +189,58 @@ I18N = {
         "buy": "買入",
         "hold": "持有",
         "sell": "賣出",
-        "who_are_they": "點擊查看華爾街機構分析師評等清單 (WHO ARE THEY)",
-        "firm": "機構 (Firm)",
-        "rating": "評等 (Rating)",
+        "who_are_they": "查看分析師與機構評等名單",
+        "firm": "機構",
+        "rating": "評等",
         "from_grade": "前次評等",
-        "pub_date": "發布日期",
-        "audit_title": "體質審查 // 流動性與盈餘品質",
-        "audit_pass": "[STATUS: PASS] 營運現金流充足覆蓋淨利，負債槓桿健康，造血無虞。",
-        "margin_title": "損益與利潤率趨勢 (MARGIN STRUCTURE)",
-        "dupont_title": "杜邦拆解分析 (ROE BREAKDOWN)",
-        "cfo_fcf_title": "造血能力 (CFO VS FCF)",
-        "shareholder_yield_title": "股東回報 (股利 + 庫藏股回購)",
+        "pub_date": "日期",
+        "audit_title": "財務健康度 // 流動性與盈餘品質",
+        "audit_pass": "[STATUS: NORMAL] 營運現金流覆蓋淨利，負債結構與造血健康。",
+        "margin_title": "利潤率趨勢 (毛利 / 營益)",
+        "dupont_title": "杜邦分析 (ROE 拆解)",
+        "cfo_fcf_title": "現金流結構 (CFO / FCF)",
+        "shareholder_yield_title": "股東回報 (股利與庫藏股)",
         "ccc_title": "現金轉換週期 (CCC 天數)",
-        "solvency_title": "償債與槓桿壓力測試 (SOLVENCY STRESS)",
+        "solvency_title": "償債與槓桿指標",
         "int_cov": "利息覆蓋倍數",
         "net_debt": "淨負債規模",
         "debt_ratio": "資產負債率",
-        "dcf_title": "逆向 DCF 隱含成長模型 (REVERSE DCF)",
+        "dcf_title": "逆向 DCF 隱含成長模型",
         "wacc": "折現率 WACC (%)",
         "g_term": "永續成長率 g (%)",
-        "implied_cagr": "市場即時隱含未來 5 年 FCF 年化複合成長率 (CAGR)",
-        "peers_title": "跨市場同業對比矩陣 (統一美元計價)",
-        "news_title": "即時快訊 // 近 5 天動態消息面",
-        "no_news": "近 5 天內無重大突發新聞更新。",
-        "dialog_title": "THESTOCKs // 使用聲明",
-        "dialog_intro": "本終端提供即時行情、華爾街預測與財務估值模型穿透。",
-        "dialog_feat1": "• **市場數據**：TradingView 行情圖表與機構分析師共識",
-        "dialog_feat2": "• **量化財務**：杜邦拆解、營運週期 (CCC) 與逆向 DCF 估值",
-        "dialog_feat3": "",
-        "dialog_disclaimer": "免責聲明：所有數據僅供個人研究參考，不構成任何投資建議。",
-        "dialog_agree_btn": "同意並進入",
-        "dialog_reopen_btn": "📖 終端使用說明 / 介紹",
+        "implied_cagr": "市場隱含未來 5 年 FCF 年化成長率 (CAGR)",
+        "peers_title": "同業財務指標對比 (美元統一計價)",
+        "news_title": "即時新聞 (近 5 日)",
+        "no_news": "近期無重大即時新聞。",
+        "dialog_title": "THESTOCKs // 使用須知",
+        "dialog_intro": "本終端提供多市場行情、機構評等與量化財務估值。",
+        "dialog_feat1": "• 行情與預測：TradingView 圖表、分析師共識與目標價",
+        "dialog_feat2": "• 量化分析：杜邦拆解、營運週期 (CCC) 與逆向 DCF 模型",
+        "dialog_disclaimer": "聲明：所有數據僅供個人研究參考，非投資建議。",
+        "dialog_agree_btn": "同意並開始",
+        "dialog_reopen_btn": "使用須知"
     },
     "en": {
-        "pipeline": "MODE SELECTION",
+        "pipeline": "MODE",
         "p_equity": "Stocks",
         "p_etf": "ETFs",
         "selection": "SELECTION",
-        "hot_stocks": "WATCHLIST HOT",
-        "custom_stock": "CUSTOM TICKER",
-        "ticker_input": "ENTER TICKER (e.g. NVDA, AAPL, 2330):",
-        "peers_basket": "PEERS BASKET (BENCHMARK):",
+        "hot_stocks": "Watchlist",
+        "custom_stock": "Custom",
+        "ticker_input": "Ticker (e.g. NVDA, AAPL, 2330):",
+        "peers_basket": "Peers Basket:",
         "last_price": "LAST PRICE",
-        "range_52w": "52W RANGE POSITION",
+        "range_52w": "52W RANGE",
         "val_fwd_ttm": "VALUATION (FWD / TTM)",
-        "mcap_usd": "STANDARDIZED MCAP",
+        "mcap_usd": "MCAP (USD)",
         "tab_analytics": "Analytics",
         "tab_fundamentals": "Fundamentals",
         "tab_valuation": "Valuation & Cycle",
         "tab_peers_news": "Peers & News",
         "tv_title": "Real-Time Market",
         "target_12m": "12-MONTH PRICE TARGET // WALL STREET FORECAST CONE",
-        "target_mean": "12-MONTH PRICE TARGET (MEAN)",
-        "hist_trend": "Past 1Y Trend",
+        "target_mean": "12M Mean Target",
+        "hist_trend": "History",
         "t_high": "High Target",
         "t_low": "Low Target",
         "t_mean_lbl": "Mean Target",
@@ -260,37 +250,36 @@ I18N = {
         "buy": "Buy",
         "hold": "Hold",
         "sell": "Sell",
-        "who_are_they": "CLICK TO EXPAND WALL STREET ANALYSTS LIST (WHO ARE THEY)",
+        "who_are_they": "View Institutional Analyst Ratings",
         "firm": "Firm",
         "rating": "Rating",
-        "from_grade": "Prior Rating",
+        "from_grade": "Prior",
         "pub_date": "Date",
         "audit_title": "AUDIT STATUS // LIQUIDITY & EARNINGS QUALITY",
-        "audit_pass": "[STATUS: PASS] CFO fully Accretes Net Profits. Healthy leverage and robust FCF generation.",
-        "margin_title": "MARGIN STRUCTURE TREND",
-        "dupont_title": "DUPONT ANALYSIS (ROE BREAKDOWN)",
-        "cfo_fcf_title": "CASH FLOW ACCRETION (CFO VS FCF)",
+        "audit_pass": "[STATUS: NORMAL] CFO covers net profits. Healthy solvency profile.",
+        "margin_title": "MARGIN TREND",
+        "dupont_title": "DUPONT ANALYSIS (ROE)",
+        "cfo_fcf_title": "CASH FLOW (CFO / FCF)",
         "shareholder_yield_title": "SHAREHOLDER YIELD (DIVIDENDS + BUYBACKS)",
         "ccc_title": "CASH CONVERSION CYCLE (DAYS)",
-        "solvency_title": "SOLVENCY & LEVERAGE STRESS",
+        "solvency_title": "SOLVENCY & LEVERAGE",
         "int_cov": "Interest Coverage",
         "net_debt": "Net Debt",
         "debt_ratio": "Debt Ratio",
-        "dcf_title": "REVERSE DCF IMPLIED GROWTH MODEL",
+        "dcf_title": "REVERSE DCF MODEL",
         "wacc": "Discount Rate WACC (%)",
         "g_term": "Terminal Growth g (%)",
         "implied_cagr": "Implied 5-Year FCF Annualized CAGR",
-        "peers_title": "CROSS-MARKET PEER BENCHMARK (USD STANDARDIZED)",
-        "news_title": "BREAKING WIRE // 5-DAY REAL-TIME NEWS",
-        "no_news": "No wire feeds found within past 5 days.",
+        "peers_title": "PEER BENCHMARK (USD STANDARDIZED)",
+        "news_title": "BREAKING WIRE (5-DAY)",
+        "no_news": "No feeds found within 5 days.",
         "dialog_title": "THESTOCKs // TERMS",
-        "dialog_intro": "Terminal provides market quotes, Street consensus, and valuation models.",
-        "dialog_feat1": "• **Market**: TradingView charting and institutional ratings",
-        "dialog_feat2": "• **Analytics**: DuPont analysis, CCC cycle, and Reverse DCF",
-        "dialog_feat3": "",
-        "dialog_disclaimer": "Notice: Data for research purposes only. Not investment advice.",
-        "dialog_agree_btn": "Agree & Enter",
-        "dialog_reopen_btn": "📖 Platform Guide / Intro",
+        "dialog_intro": "Institutional terminal for market action and fundamental valuation.",
+        "dialog_feat1": "• Market: TradingView charting and Wall St consensus",
+        "dialog_feat2": "• Analytics: DuPont breakdown, CCC cycle, and Reverse DCF",
+        "dialog_disclaimer": "Notice: For research only. Not financial advice.",
+        "dialog_agree_btn": "Agree & Continue",
+        "dialog_reopen_btn": "Platform Terms"
     }
 }
 
@@ -298,21 +287,21 @@ I18N = {
 # 2. 基礎字典與工具函式
 # ==========================================
 STOCK_INDEX = {
-    "NVDA": "NVIDIA (算力 GPU/AI 霸主)", "META": "Meta Platforms (社群與開源AI)", "AAPL": "Apple (消費電子生態)",
-    "MSFT": "Microsoft (Azure/AI)", "GOOGL": "Alphabet (Google 廣告與雲端)", "AMZN": "Amazon (AWS/電商)",
-    "TSM": "台積電 ADR (晶圓代工)", "AMD": "AMD (CPU/GPU)", "AVGO": "Broadcom (網通/ASIC)",
-    "MU": "Micron (美光/記憶體)", "TSLA": "Tesla (電動車/機器人)", "INTC": "Intel (晶圓製造/CPU)",
-    "NFLX": "Netflix (串流影音龍頭)", "2330.TW": "台積電 (2330/晶圓代工龍頭)", "2454.TW": "聯發科 (2454/行動晶片)",
-    "2317.TW": "鴻海 (2317/伺服器代工)", "2382.TW": "廣達 (2382/AI 伺服器整機)", "3017.TW": "奇鋐 (3017/AI 散熱 3D VC)"
+    "NVDA": "NVIDIA", "META": "Meta Platforms", "AAPL": "Apple",
+    "MSFT": "Microsoft", "GOOGL": "Alphabet", "AMZN": "Amazon",
+    "TSM": "TSMC ADR", "AMD": "AMD", "AVGO": "Broadcom",
+    "MU": "Micron", "TSLA": "Tesla", "INTC": "Intel",
+    "NFLX": "Netflix", "2330.TW": "台積電 2330", "2454.TW": "聯發科 2454",
+    "2317.TW": "鴻海 2317", "2382.TW": "廣達 2382", "3017.TW": "奇鋐 3017"
 }
 
 ETF_INDEX = {
-    "0050.TW": "元大台灣50 (台灣前50大權值旗艦)",
-    "006208.TW": "富邦台50 (低內扣台股核心大盤)",
-    "SPY": "SPDR S&P 500 ETF (標普500核心大盤)",
-    "QQQ": "Invesco QQQ (那斯達克100科技旗艦)",
-    "SOXX": "iShares 半導體 ETF (費城半導體龍頭)",
-    "VT": "Vanguard 全球股票 ETF (全市場配置)",
+    "0050.TW": "元大台灣50 (0050)",
+    "006208.TW": "富邦台50 (006208)",
+    "SPY": "SPDR S&P 500 ETF",
+    "QQQ": "Invesco QQQ",
+    "SOXX": "iShares 半導體 ETF",
+    "VT": "Vanguard 全球股票 ETF",
     "VTI": "Vanguard 美股全市場 ETF"
 }
 
@@ -392,7 +381,7 @@ def fetch_realtime_news_5days(sym_list):
                         "ticker": s_code,
                         "title": title,
                         "link": item.get("link") or item.get("canonicalUrl", {}).get("url", "#"),
-                        "publisher": item.get("publisher", "Wire Feed"),
+                        "publisher": item.get("publisher", "Wire"),
                         "timestamp": pub_time,
                         "time_str": f"{rel_time} ({exact_time})" if exact_time else rel_time
                     })
@@ -419,7 +408,7 @@ def fetch_realtime_news_5days(sym_list):
                             "link": l_text,
                             "publisher": "Google Wire",
                             "timestamp": now_ts,
-                            "time_str": "即時快訊"
+                            "time_str": "即時"
                         })
         except Exception:
             pass
@@ -439,26 +428,15 @@ def safe_extract(df, candidate_keys):
     return pd.Series(dtype=float)
 
 # ==========================================
-# 3. 側邊欄控制台 (含中英文切換)
+# 3. 側邊欄控制台
 # ==========================================
 st.sidebar.markdown("<div style='color: #f0b90b; font-weight:800; font-size:1.3rem; letter-spacing:0.06em; margin-bottom:10px;'>THESTOCKs</div>", unsafe_allow_html=True)
 
-# 🌐 語言切換器
-lang_choice = st.sidebar.radio("🌐 LANGUAGE / 語言", ["繁體中文", "English"], horizontal=True)
+lang_choice = st.sidebar.radio("🌐 語言 / LANGUAGE", ["繁體中文", "English"], horizontal=True)
 lang = "zh" if lang_choice == "繁體中文" else "en"
 T = I18N[lang]
 
-pipeline_mode = st.sidebar.radio(
-    T["pipeline"],
-    [T["p_equity"], T["p_etf"]],
-    index=0
-)
-
-st.sidebar.caption(f"USDT / TWD FX: **{USD_TWD:.2f}**")
-
-# ==========================================
-# 歡迎導覽彈窗 (Welcome Onboarding Dialog)
-# ==========================================
+# 彈窗狀態機制
 if "terms_agreed" not in st.session_state:
     st.session_state.terms_agreed = False
 
@@ -478,16 +456,22 @@ def show_welcome_dialog():
         st.session_state.terms_agreed = True
         st.rerun()
 
-# 首次進站未同意時自動跳出彈窗
 if not st.session_state.terms_agreed:
     show_welcome_dialog()
 
+pipeline_mode = st.sidebar.radio(
+    T["pipeline"],
+    [T["p_equity"], T["p_etf"]],
+    index=0
+)
+
+st.sidebar.caption(f"USDT / TWD FX: **{USD_TWD:.2f}**")
 
 if pipeline_mode == T["p_equity"]:
     input_choice = st.sidebar.radio(T["selection"], [T["hot_stocks"], T["custom_stock"]], horizontal=True)
     if input_choice == T["hot_stocks"]:
         opts = [f"{s} // {n}" for s, n in STOCK_INDEX.items()]
-        sel = st.sidebar.selectbox("HOT ASSETS", options=opts, index=0)
+        sel = st.sidebar.selectbox("ASSETS", options=opts, index=0)
         ticker = sel.split(" // ")[0].strip()
     else:
         raw_in = st.sidebar.text_input(T["ticker_input"], value="NVDA")
@@ -501,7 +485,7 @@ else:
     input_choice = st.sidebar.radio(T["selection"], [T["hot_stocks"], T["custom_stock"]], horizontal=True)
     if input_choice == T["hot_stocks"]:
         opts = [f"{s} // {n}" for s, n in ETF_INDEX.items()]
-        sel = st.sidebar.selectbox("INDEX ETF", options=opts, index=0)
+        sel = st.sidebar.selectbox("ETF", options=opts, index=0)
         ticker = sel.split(" // ")[0].strip()
     else:
         raw_in = st.sidebar.text_input("ETF TICKER:", value="0050")
@@ -511,7 +495,6 @@ else:
     all_peers = [ticker] + [p for p in suggested_peers if p != ticker]
     peer_input = st.sidebar.text_input(T["peers_basket"], value=",".join(all_peers))
 
-
 st.sidebar.markdown("---")
 if st.sidebar.button(T["dialog_reopen_btn"], use_container_width=True):
     show_welcome_dialog()
@@ -520,10 +503,10 @@ if not ticker:
     st.stop()
 
 # ==============================================================================
-# 迴路 A：企業個股深度診斷
+# 迴路 A：個股診斷
 # ==============================================================================
 if pipeline_mode == T["p_equity"]:
-    with st.spinner(f"THESTOCKs Querying: {ticker}..."):
+    with st.spinner(f"Querying: {ticker}..."):
         try:
             stock, info, inc, bs, cf = load_equity_data(ticker)
             chart_1y, fast_info = load_price_history(ticker, period="1y")
@@ -532,7 +515,7 @@ if pipeline_mode == T["p_equity"]:
             st.stop()
 
     if inc.empty or bs.empty or cf.empty:
-        st.error(f"ERR_EMPTY_STATEMENTS: {ticker} 数据缺失，若为 ETF 请切换至 ETF 迴路。")
+        st.error(f"ERR_EMPTY_STATEMENTS: {ticker} 財報數據不足。")
         st.stop()
 
     curr = info.get("currency") or ("TWD" if ".TW" in ticker else "USD")
@@ -562,7 +545,7 @@ if pipeline_mode == T["p_equity"]:
         high52 = info.get('fiftyTwoWeekHigh', current_price * 1.2)
     pos52 = ((current_price - low52) / (high52 - low52) * 100) if high52 > low52 else 50.0
 
-    # P/E 保底換算
+    # 穿透 P/E
     t_pe = info.get("trailingPE")
     f_pe = info.get("forwardPE")
     if not isinstance(t_pe, (int, float)) or t_pe <= 0:
@@ -583,7 +566,6 @@ if pipeline_mode == T["p_equity"]:
     t_pe_str = f"{t_pe:.1f}x"
     f_pe_str = f"{f_pe:.1f}x"
 
-    # 頂部即時 Ticker 橫幅
     st.markdown(f"""
     <div class="bybit-header">
         <div class="bybit-title">
@@ -617,7 +599,6 @@ if pipeline_mode == T["p_equity"]:
     </div>
     """, unsafe_allow_html=True)
 
-    # 報表整理
     common_cols = [c for c in inc.columns if c in bs.columns and c in cf.columns]
     common_cols.sort()
     c_inc, c_bs, c_cf = inc[common_cols], bs[common_cols], cf[common_cols]
@@ -636,7 +617,6 @@ if pipeline_mode == T["p_equity"]:
     gross_margin = (gp / rev) * 100
     op_margin = (op / rev) * 100
 
-    # 4 大標籤頁
     tab_analytics, tab_fundamentals, tab_valuation, tab_peers_news = st.tabs([
         T["tab_analytics"],
         T["tab_fundamentals"],
@@ -645,7 +625,7 @@ if pipeline_mode == T["p_equity"]:
     ])
 
     # --------------------------------------------------------------------------
-    # TAB 1: 行情與分析 (TradingView 官方圖表 + 12M 目標價扇形圖 + 分析師名單)
+    # TAB 1: 即時行情與分析
     # --------------------------------------------------------------------------
     with tab_analytics:
         st.markdown(f"<div class='bybit-section-title'>{T['tv_title']}</div>", unsafe_allow_html=True)
@@ -744,80 +724,21 @@ if pipeline_mode == T["p_equity"]:
                 lbl_curr = "目前" if lang == "zh" else "Current"
 
                 fig_cone = go.Figure()
-                # 1. 過去 1 年歷史走勢
-                fig_cone.add_trace(go.Scatter(
-                    x=chart_1y.index, y=chart_1y['Close'],
-                    mode='lines', name=T['hist_trend'],
-                    line=dict(color="#eaecef", width=1.8),
-                    hoverinfo='skip'
-                ))
-                # 2. 最高目標線
-                fig_cone.add_trace(go.Scatter(
-                    x=[last_dt, future_dt], y=[current_price, t_high],
-                    mode='lines', name=T['t_high'],
-                    line=dict(color="rgba(0, 192, 135, 0.4)", width=1.2, dash="dot"),
-                    hoverinfo='skip'
-                ))
-                # 3. 最低目標線 (與最高構成預測區間陰影)
-                fig_cone.add_trace(go.Scatter(
-                    x=[last_dt, future_dt], y=[current_price, t_low],
-                    mode='lines', name=T['t_low'],
-                    line=dict(color="rgba(246, 70, 93, 0.4)", width=1.2, dash="dot"),
-                    fill='tonexty', fillcolor='rgba(240, 185, 11, 0.06)',
-                    hoverinfo='skip'
-                ))
-                # 4. 平均目標線
-                fig_cone.add_trace(go.Scatter(
-                    x=[last_dt, future_dt], y=[current_price, t_mean],
-                    mode='lines', name=T['t_mean_lbl'],
-                    line=dict(color="#f0b90b", width=2.0, dash="dash"),
-                    hoverinfo='skip'
-                ))
-                # 5. 當前現價定位錨點
-                fig_cone.add_trace(go.Scatter(
-                    x=[last_dt], y=[current_price],
-                    mode='markers', name=T['curr_price_lbl'],
-                    marker=dict(color="#ffffff", size=6, line=dict(color="#181a20", width=2)),
-                    hoverinfo='skip'
-                ))
+                fig_cone.add_trace(go.Scatter(x=chart_1y.index, y=chart_1y['Close'], mode='lines', name=T['hist_trend'], line=dict(color="#eaecef", width=1.8), hoverinfo='skip'))
+                fig_cone.add_trace(go.Scatter(x=[last_dt, future_dt], y=[current_price, t_high], mode='lines', name=T['t_high'], line=dict(color="rgba(0, 192, 135, 0.4)", width=1.2, dash="dot"), hoverinfo='skip'))
+                fig_cone.add_trace(go.Scatter(x=[last_dt, future_dt], y=[current_price, t_low], mode='lines', name=T['t_low'], line=dict(color="rgba(246, 70, 93, 0.4)", width=1.2, dash="dot"), fill='tonexty', fillcolor='rgba(240, 185, 11, 0.06)', hoverinfo='skip'))
+                fig_cone.add_trace(go.Scatter(x=[last_dt, future_dt], y=[current_price, t_mean], mode='lines', name=T['t_mean_lbl'], line=dict(color="#f0b90b", width=2.0, dash="dash"), hoverinfo='skip'))
+                fig_cone.add_trace(go.Scatter(x=[last_dt], y=[current_price], mode='markers', name=T['curr_price_lbl'], marker=dict(color="#ffffff", size=6, line=dict(color="#181a20", width=2)), hoverinfo='skip'))
 
-                # 6. 右側三大膠囊色塊標籤 (最高 / 平均 / 最低) + 目前現價標籤
                 fig_cone.update_layout(
                     annotations=[
-                        # 最高標籤 (綠色色塊)
-                        dict(
-                            x=future_dt, y=t_high, xref="x", yref="y",
-                            text=f"<b>{lbl_high} {curr_sym}{t_high:,.2f}</b>",
-                            showarrow=False, xanchor="left",
-                            bgcolor="#00c087", font=dict(color="#ffffff", size=11, family="sans-serif"),
-                            borderpad=5, bordercolor="#00c087", borderwidth=1
-                        ),
-                        # 平均標籤 (青綠深色塊)
-                        dict(
-                            x=future_dt, y=t_mean, xref="x", yref="y",
-                            text=f"<b>{lbl_mean} {curr_sym}{t_mean:,.2f}</b>",
-                            showarrow=False, xanchor="left",
-                            bgcolor="#008060", font=dict(color="#ffffff", size=11, family="sans-serif"),
-                            borderpad=5, bordercolor="#008060", borderwidth=1
-                        ),
-                        # 最低標籤 (紅色色塊)
-                        dict(
-                            x=future_dt, y=t_low, xref="x", yref="y",
-                            text=f"<b>{lbl_low} {curr_sym}{t_low:,.2f}</b>",
-                            showarrow=False, xanchor="left",
-                            bgcolor="#f6465d", font=dict(color="#ffffff", size=11, family="sans-serif"),
-                            borderpad=5, bordercolor="#f6465d", borderwidth=1
-                        ),
-                        # 現價標籤
-                        dict(
-                            x=last_dt, y=current_price, xref="x", yref="y",
-                            text=f"<b>{lbl_curr}</b><br>{curr_sym}{current_price:,.2f}",
-                            showarrow=True, arrowhead=0, arrowcolor="#848e9c",
-                            ax=0, ay=35, font=dict(color="#eaecef", size=10, family="monospace")
-                        )
+                        dict(x=future_dt, y=t_high, xref="x", yref="y", text=f"<b>{lbl_high} {curr_sym}{t_high:,.2f}</b>", showarrow=False, xanchor="left", bgcolor="#00c087", font=dict(color="#ffffff", size=11, family="sans-serif"), borderpad=5, bordercolor="#00c087", borderwidth=1),
+                        dict(x=future_dt, y=t_mean, xref="x", yref="y", text=f"<b>{lbl_mean} {curr_sym}{t_mean:,.2f}</b>", showarrow=False, xanchor="left", bgcolor="#008060", font=dict(color="#ffffff", size=11, family="sans-serif"), borderpad=5, bordercolor="#008060", borderwidth=1),
+                        dict(x=future_dt, y=t_low, xref="x", yref="y", text=f"<b>{lbl_low} {curr_sym}{t_low:,.2f}</b>", showarrow=False, xanchor="left", bgcolor="#f6465d", font=dict(color="#ffffff", size=11, family="sans-serif"), borderpad=5, bordercolor="#f6465d", borderwidth=1),
+                        dict(x=last_dt, y=current_price, xref="x", yref="y", text=f"<b>{lbl_curr}</b><br>{curr_sym}{current_price:,.2f}", showarrow=True, arrowhead=0, arrowcolor="#848e9c", ax=0, ay=35, font=dict(color="#eaecef", size=10, family="monospace"))
                     ],
                     template="plotly_dark", height=280,
-                    margin=dict(l=10, r=130, t=20, b=35), # r 擴大到 130 確保膠囊標籤不被裁切
+                    margin=dict(l=10, r=130, t=20, b=35),
                     paper_bgcolor="#181a20", plot_bgcolor="#181a20",
                     xaxis=dict(showgrid=False, showticklabels=True),
                     yaxis=dict(showgrid=True, gridcolor="#262932", side="left", showticklabels=True),
@@ -826,7 +747,7 @@ if pipeline_mode == T["p_equity"]:
                 st.plotly_chart(fig_cone, use_container_width=True, config={'displayModeBar': False})
 
         with col_opinions:
-            st.markdown(f"**{T['consensus_title']} ({num_analysts} Analysts)**")
+            st.markdown(f"**{T['consensus_title']} ({num_analysts})**")
             rec_color = bybit_green if "BUY" in rec_key else ("#f0b90b" if "HOLD" in rec_key else bybit_red)
             st.markdown(f"""
             <div style="background: #1f222a; border-radius: 4px; padding: 10px 14px; margin-bottom: 12px; border-left: 3px solid {rec_color};">
@@ -854,7 +775,6 @@ if pipeline_mode == T["p_equity"]:
             </div>
             """, unsafe_allow_html=True)
 
-            # 點擊展開華爾街機構評等清單
             with st.expander(T["who_are_they"], expanded=True):
                 upgrades_list = []
                 try:
@@ -875,10 +795,10 @@ if pipeline_mode == T["p_equity"]:
 
                 if not upgrades_list:
                     upgrades_list = [
-                        {T["firm"]: "Morgan Stanley", T["rating"]: "Overweight", T["from_grade"]: "Overweight", T["pub_date"]: "Recent"},
-                        {T["firm"]: "Goldman Sachs", T["rating"]: "Buy", T["from_grade"]: "Neutral", T["pub_date"]: "Recent"},
-                        {T["firm"]: "JPMorgan", T["rating"]: "Overweight", T["from_grade"]: "Overweight", T["pub_date"]: "Recent"},
-                        {T["firm"]: "Bank of America", T["rating"]: "Buy", T["from_grade"]: "Buy", T["pub_date"]: "Recent"}
+                        {T["firm"]: "Morgan Stanley", T["rating"]: "Overweight", T["from_grade"]: "Overweight", T["pub_date"]: "近期"},
+                        {T["firm"]: "Goldman Sachs", T["rating"]: "Buy", T["from_grade"]: "Neutral", T["pub_date"]: "近期"},
+                        {T["firm"]: "JPMorgan", T["rating"]: "Overweight", T["from_grade"]: "Overweight", T["pub_date"]: "近期"},
+                        {T["firm"]: "Bank of America", T["rating"]: "Buy", T["from_grade"]: "Buy", T["pub_date"]: "近期"}
                     ]
 
                 st.dataframe(pd.DataFrame(upgrades_list), use_container_width=True, hide_index=True)
@@ -992,7 +912,7 @@ if pipeline_mode == T["p_equity"]:
 
             sc1, sc2, sc3 = st.columns(3)
             sc1.metric(T["int_cov"], f"{latest_cov:.1f}x" if (not np.isnan(latest_cov) and latest_cov > 0) else "Pass")
-            sc2.metric(T["net_debt"], f"{curr_sym}{latest_nd/1e9:,.1f} B", "Net Cash" if latest_nd < 0 else "Net Debt")
+            sc2.metric(T["net_debt"], f"{curr_sym}{latest_nd/1e9:,.1f} B", "淨現金" if latest_nd < 0 else "淨負債")
             sc3.metric(T["debt_ratio"], f"{dr:.1f}%")
 
         st.markdown(f"<div class='bybit-section-title'>{T['dcf_title']}</div>", unsafe_allow_html=True)
@@ -1096,8 +1016,8 @@ if pipeline_mode == T["p_equity"]:
         else:
             st.caption(T["no_news"])
 
-# ==============================================================================
-# 迴路 B：指數型 ETF 資產穿透
-# ==============================================================================
+# ==============================================
+# 迴路 B：ETF 穿透
+# ==============================================
 else:
-    st.info("ETF Engine Online.")
+    st.info("ETF Look-Through Engine Online.")
