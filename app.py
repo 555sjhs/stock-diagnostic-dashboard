@@ -889,16 +889,17 @@ with tab_valuation:
 with tab_peers_news:
     st.markdown(f"<div class='oled-section-title'>{T['peers_title']}</div>", unsafe_allow_html=True)
     
-    # 判斷是否為 ETF 或指數
-    etf_symbols = ["0050", "0056", "006208", "00878", "00919", "00929", "SPY", "QQQ", "SOXX", "VOO", "IVV", "VTI", "VT", "SMH"]
-    is_curr_etf = any(ticker.startswith(e) for e in etf_symbols) or ticker.startswith("^")
+    # 1. 判斷是否為 ETF 或大盤指數
+    etf_keywords = ["0050", "0056", "006208", "00878", "00919", "00929", "SPY", "QQQ", "SOXX", "VOO", "IVV", "VTI", "VT", "SMH"]
+    is_curr_etf = any(ticker.startswith(e) for e in etf_keywords) or ticker.startswith("^")
 
     if is_curr_etf:
-        # ETF 對比清單 (台股 ETF 比台股主流 ETF，美股比美股主流大盤 ETF)
         if ".TW" in ticker or ticker in ["0050", "0056", "006208", "00878", "00919"]:
             peer_etfs = ["0050.TW", "006208.TW", "0056.TW", "00878.TW", "00919.TW"]
+        elif "SOX" in ticker:
+            peer_etfs = ["SOXX", "SMH", "QQQ", "SPY"]
         else:
-            peer_etfs = ["SPY", "QQQ", "VOO", "SOXX", "VTI"]
+            peer_etfs = ["SPY", "VOO", "IVV", "QQQ", "VTI"]
 
         etf_records = []
         for e_sym in peer_etfs:
@@ -908,8 +909,6 @@ with tab_peers_news:
                 e_fast = dict(et.fast_info)
                 p_cur = e_fast.get("lastPrice") or e_inf.get("previousClose") or e_inf.get("navPrice", 0.0)
                 aum = e_inf.get("totalAssets", 0) or 0
-                
-                # 美元統一計價 AUM (B)
                 is_tw_etf = ".TW" in e_sym
                 aum_usd_b = (aum / USD_TWD / 1e9) if is_tw_etf else (aum / 1e9)
                 exp_ratio = e_inf.get("annualReportExpenseRatio", 0.0)
@@ -933,38 +932,71 @@ with tab_peers_news:
         if etf_records:
             st.dataframe(pd.DataFrame(etf_records).set_index(list(etf_records[0].keys())[0]), use_container_width=True)
     else:
-        # 個股智能產業對標清單
-        peer_mapping = {
-            "NFLX": ["NFLX", "DIS", "WBD", "CMCSA", "AMZN"],
-            "NVDA": ["NVDA", "AMD", "AVGO", "QCOM", "2330.TW"],
-            "AMD": ["AMD", "NVDA", "INTC", "QCOM", "AVGO"],
-            "AAPL": ["AAPL", "MSFT", "GOOGL", "AMZN", "META"],
-            "MSFT": ["MSFT", "GOOGL", "AMZN", "ORCL", "AAPL"],
-            "TSLA": ["TSLA", "RIVN", "LCID", "BYDDF", "GM"],
-            "2330.TW": ["2330.TW", "NVDA", "INTC", "2454.TW", "ASML"]
+        # 2. 個股產業矩陣：精確產業對標
+        industry_peers = {
+            # 串流影視與娛樂媒體
+            "STREAMING": ["NFLX", "DIS", "WBD", "CMCSA", "AMZN"],
+            # 半導體製造 / IC 設計
+            "SEMI": ["NVDA", "AMD", "AVGO", "QCOM", "2330.TW", "INTC", "TSM"],
+            # 消費電子 / 生態系
+            "HARDWARE": ["AAPL", "HPQ", "DELL", "2317.TW", "MSI.TW"],
+            # 雲端與企業軟體
+            "SOFTWARE": ["MSFT", "GOOGL", "AMZN", "ORCL", "CRM"],
+            # 新能源與電動車
+            "AUTO": ["TSLA", "RIVN", "LCID", "BYDDF", "GM", "F"],
+            # 台股權值代工與伺服器
+            "TW_TECH": ["2330.TW", "2317.TW", "2454.TW", "2382.TW", "6669.TW"]
         }
-        clean_curr = ticker.replace("^", "").strip().upper()
-        default_peers = peer_mapping.get(clean_curr, peer_mapping.get(ticker, [ticker, "NVDA", "AAPL", "MSFT", "GOOGL"]))
+        
+        target_upper = ticker.strip().upper()
+        matched_peers = None
+
+        # 根據標的歸類產業
+        if target_upper in ["NFLX", "DIS", "WBD", "CMCSA", "PARA"]:
+            matched_peers = industry_peers["STREAMING"]
+        elif target_upper in ["NVDA", "AMD", "AVGO", "QCOM", "INTC", "TSM", "2330.TW", "2454.TW", "ASML", "MU"]:
+            matched_peers = industry_peers["SEMI"]
+        elif target_upper in ["AAPL", "HPQ", "DELL", "LENOVO"]:
+            matched_peers = industry_peers["HARDWARE"]
+        elif target_upper in ["MSFT", "GOOGL", "GOOG", "ORCL", "CRM", "SAP", "ADBE"]:
+            matched_peers = industry_peers["SOFTWARE"]
+        elif target_upper in ["TSLA", "RIVN", "LCID", "BYDDF", "NIO", "GM", "F"]:
+            matched_peers = industry_peers["AUTO"]
+        elif target_upper.endswith(".TW") or target_upper.endswith(".TWO"):
+            matched_peers = industry_peers["TW_TECH"]
+        else:
+            # 自動從 yfinance 偵測 sector / industry
+            try:
+                sec = info.get("sector", "")
+                if "Technology" in sec or "Communication" in sec:
+                    matched_peers = [target_upper, "MSFT", "AAPL", "GOOGL", "AMZN"]
+                else:
+                    matched_peers = [target_upper, "SPY", "AAPL", "MSFT"]
+            except Exception:
+                matched_peers = [target_upper, "AAPL", "MSFT", "GOOGL"]
+
+        if target_upper not in matched_peers:
+            matched_peers = [target_upper] + matched_peers[:4]
 
         peer_records = []
-        for p_sym in default_peers:
+        for p_sym in matched_peers[:5]:
             try:
                 ps = yf.Ticker(p_sym)
                 p_inf = ps.info
                 p_fast = dict(ps.fast_info)
                 p_curr = p_inf.get("currency") or ("TWD" if ".TW" in p_sym else "USD")
 
-                # 正確美元市值計算
+                # 正確美元市值計算：美股不除以匯率，台股才除以 USD_TWD
                 raw_mcap = p_fast.get("marketCap") or p_inf.get("marketCap", 0)
                 if p_curr == "TWD":
                     mcap_usd = (raw_mcap / USD_TWD) / 1e9 if raw_mcap else np.nan
                 else:
                     mcap_usd = (raw_mcap / 1e9) if raw_mcap else np.nan
 
-                # 比率抓取官方最新 TTM 數據 (避免 iloc[0] 取到多年舊帳)
+                # 比率直接使用官方最新滾動 TTM
                 gm_val = p_inf.get("grossMargins")
                 gm_val = gm_val * 100 if gm_val is not None else np.nan
-                
+
                 om_val = p_inf.get("operatingMargins")
                 om_val = om_val * 100 if om_val is not None else np.nan
 
@@ -973,17 +1005,14 @@ with tab_peers_news:
 
                 fwd_pe = p_inf.get("forwardPE", np.nan)
 
-                # FCF/NI
+                # FCF/淨利轉換率
                 fcf_ni = np.nan
                 try:
-                    cf_df = ps.cashflow
-                    inc_df = ps.financials
-                    if not cf_df.empty and not inc_df.empty:
-                        cfo = safe_extract(cf_df, ["Operating Cash Flow", "OperatingCashFlow"]).iloc[0]
-                        cap = safe_extract(cf_df, ["Capital Expenditure", "CapitalExpenditure"]).abs().iloc[0]
-                        ni = safe_extract(inc_df, ["Net Income", "NetIncome"]).iloc[0]
-                        if pd.notna(cfo) and pd.notna(cap) and pd.notna(ni) and ni > 0:
-                            fcf_ni = (cfo - cap) / ni
+                    cfo = p_fast.get("operatingCashflow") or safe_extract(ps.cashflow, ["Operating Cash Flow", "OperatingCashFlow"]).iloc[0]
+                    cap = safe_extract(ps.cashflow, ["Capital Expenditure", "CapitalExpenditure"]).abs().iloc[0]
+                    ni = p_fast.get("netIncome") or safe_extract(ps.financials, ["Net Income", "NetIncome"]).iloc[0]
+                    if pd.notna(cfo) and pd.notna(cap) and pd.notna(ni) and ni > 0:
+                        fcf_ni = (cfo - cap) / ni
                 except Exception:
                     pass
 
@@ -997,7 +1026,7 @@ with tab_peers_news:
                 pe_col = "Forward P/E" if curr_lang == "en" else "前瞻 P/E"
 
                 peer_records.append({
-                    t_col: f"[TARGET] {p_sym}" if p_sym == ticker else p_sym,
+                    t_col: f"[TARGET] {p_sym}" if p_sym == target_upper else p_sym,
                     c_col: p_curr,
                     m_col: mcap_usd,
                     gm_col: gm_val,
