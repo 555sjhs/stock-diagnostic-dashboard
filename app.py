@@ -431,8 +431,23 @@ if pipeline_mode == "企業個股深度診斷迴路":
     is_up = change >= 0
     theme_color = bybit_green if is_up else bybit_red
 
-    low52 = info.get('fiftyTwoWeekLow', current_price) or current_price
-    high52 = info.get('fiftyTwoWeekHigh', current_price) or current_price
+    # 優先從 info 抓取，若缺失或等於現價則從 1年歷史K線計算真實 52W
+    low52 = info.get('fiftyTwoWeekLow')
+    high52 = info.get('fiftyTwoWeekHigh')
+    if not low52 or not high52 or low52 == high52:
+        if not chart_1y.empty:
+            low52 = float(chart_1y['Low'].min()) if 'Low' in chart_1y else float(chart_1y['Close'].min())
+            high52 = float(chart_1y['High'].max()) if 'High' in chart_1y else float(chart_1y['Close'].max())
+        else:
+            low52, high52 = current_price * 0.8, current_price * 1.2
+
+    # PE Fallback 計算
+    f_pe = info.get("forwardPE")
+    t_pe = info.get("trailingPE")
+    if not t_pe or t_pe == "N/A":
+        t_eps = info.get("trailingEps")
+        if t_eps and t_eps > 0:
+            t_pe = current_price / t_eps
     pos52 = ((current_price - low52) / (high52 - low52) * 100) if high52 > low52 else 50.0
     pos52 = min(max(pos52, 0.0), 100.0)
 
@@ -754,7 +769,7 @@ if pipeline_mode == "企業個股深度診斷迴路":
             if cogs_series.empty: cogs_series = rev_series * 0.5
             ar_series = safe_extract(c_bs, ["Accounts Receivable", "Receivables"])
             inv_series = safe_extract(c_bs, ["Inventory"])
-            ap_series = safe_extract(c_bs, ["Accounts Payable", "Payables"])
+            ap_series = safe_extract(c_bs, ["Accounts Payable", "Payables", "AccountsPayable", "Other Payable", "Payables And Accrued Expenses", "Current Accrued Expenses"])
 
             dso = (ar_series / rev_series) * 365
             dio = (inv_series / cogs_series) * 365
@@ -964,8 +979,23 @@ else:
     is_up = change >= 0
     theme_color = bybit_green if is_up else bybit_red
 
-    low52 = info.get('fiftyTwoWeekLow', current_price) or current_price
-    high52 = info.get('fiftyTwoWeekHigh', current_price) or current_price
+    # 優先從 info 抓取，若缺失或等於現價則從 1年歷史K線計算真實 52W
+    low52 = info.get('fiftyTwoWeekLow')
+    high52 = info.get('fiftyTwoWeekHigh')
+    if not low52 or not high52 or low52 == high52:
+        if not chart_1y.empty:
+            low52 = float(chart_1y['Low'].min()) if 'Low' in chart_1y else float(chart_1y['Close'].min())
+            high52 = float(chart_1y['High'].max()) if 'High' in chart_1y else float(chart_1y['Close'].max())
+        else:
+            low52, high52 = current_price * 0.8, current_price * 1.2
+
+    # PE Fallback 計算
+    f_pe = info.get("forwardPE")
+    t_pe = info.get("trailingPE")
+    if not t_pe or t_pe == "N/A":
+        t_eps = info.get("trailingEps")
+        if t_eps and t_eps > 0:
+            t_pe = current_price / t_eps
 
     exp_ratio = info.get("annualReportExpenseRatio", np.nan)
     if np.isnan(exp_ratio):
