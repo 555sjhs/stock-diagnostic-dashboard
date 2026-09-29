@@ -558,23 +558,23 @@ tab_analytics, tab_fundamentals, tab_valuation, tab_peers_news = st.tabs([
 with tab_analytics:
     st.markdown(f"<div class='oled-section-title'>{T['tv_title']}</div>", unsafe_allow_html=True)
     
-        if ticker in ["^TWII", "TAIEX", "IX0001"]:
+    if ticker in ["^TWII", "TAIEX", "IX0001"]:
         tv_symbol = "TWSE:TAIEX"
-        elif ticker in ["^NDX", "NDX", "QQQ"]:
+    elif ticker in ["^NDX", "NDX", "QQQ"]:
         tv_symbol = "NASDAQ:NDX"
-        elif ticker in ["^GSPC", "SPX", "SPY"]:
+    elif ticker in ["^GSPC", "SPX", "SPY"]:
         tv_symbol = "SP:SPX"
-        elif ticker in ["^SOX", "SOX", "SOXX"]:
+    elif ticker in ["^SOX", "SOX", "SOXX"]:
         tv_symbol = "INDEX:SOX"
-        elif ticker.endswith(".TW"):
+    elif ticker.endswith(".TW"):
         tv_symbol = f"TWSE:{ticker.replace('.TW', '')}"
-        elif ticker.endswith(".TWO"):
+    elif ticker.endswith(".TWO"):
         tv_symbol = f"TPEX:{ticker.replace('.TWO', '')}"
-        elif ticker in ["SPY", "VOO", "IVV"]:
+    elif ticker in ["SPY", "VOO", "IVV"]:
         tv_symbol = f"AMEX:{ticker}"
-        elif ticker in ["SOXX", "QQQ", "NVDA", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA", "NFLX", "AMD", "AVGO", "INTC", "MU"]:
+    elif ticker in ["SOXX", "QQQ", "NVDA", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA", "NFLX", "AMD", "AVGO", "INTC", "MU"]:
         tv_symbol = f"NASDAQ:{ticker}"
-        else:
+    else:
         tv_symbol = f"NYSE:{ticker}"
 
     tv_locale = "zh_TW" if curr_lang == "zh" else "en"
