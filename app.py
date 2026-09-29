@@ -437,7 +437,7 @@ if m_data:
             )
 
             st.markdown(f"""
-            <div style="background: #08080a; border: 1px solid #16161b; border-radius: 6px; padding: 10px 14px 2px 14px;">
+            <div style="background: #08080a; border: 1px solid #16161b; border-radius: 6px; padding: 10px 14px 2px 14px; margin-bottom: 4px;">
                 <div style="font-size: 0.72rem; color: #636773; font-weight: 600;">{m['name']} <span style="background:#16161b; padding:1px 4px; border-radius:2px; font-size:0.65rem;">{m['sub']}</span></div>
                 <div style="font-size: 1.15rem; font-weight: 800; font-family: monospace; color: #ffffff; margin-top: 2px;">
                     {m['cur']:,.2f}
@@ -445,12 +445,7 @@ if m_data:
                 </div>
             </div>
             """, unsafe_allow_html=True)
-            st.plotly_chart(fig_spark, use_container_width=True, config={'displayModeBar': False})
-            
-            btn_lbl = f"查看 {m['name']} ›" if curr_lang == "zh" else f"View {m['name']} ›"
-            if st.button(btn_lbl, key=f"btn_mkt_{i}", use_container_width=True):
-                st.session_state.search_ticker = m["ticker"]
-                st.rerun()
+            st.plotly_chart(fig_spark, use_container_width=True, config={'displayModeBar': False, 'staticPlot': True})
 
 st.markdown("<div style='border-bottom: 1px solid #141418; margin: 12px 0 16px 0;'></div>", unsafe_allow_html=True)
 
