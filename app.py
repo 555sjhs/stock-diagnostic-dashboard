@@ -220,7 +220,15 @@ I18N = {
         "implied_cagr": "市場即時隱含未來 5 年 FCF 年化複合成長率 (CAGR)",
         "peers_title": "跨市場同業對比矩陣 (統一美元計價)",
         "news_title": "即時快訊 // 近 5 天動態消息面",
-        "no_news": "近 5 天內無重大突發新聞更新。"
+        "no_news": "近 5 天內無重大突發新聞更新。",
+        "dialog_title": "歡迎使用 THESTOCKs 量化分析終端",
+        "dialog_intro": "THESTOCKs 是一套專為專業投資人與研究員設計的機構級多市場分析平台，穿透個股與 ETF 的真實價值。",
+        "dialog_feat1": "⚡ **即時行情與 TradingView 互動圖表**：深度整合原生手感，支援多週期與指標。",
+        "dialog_feat2": "🎯 **華爾街預測與分析師共識**：12 個月目標價扇形圖，並穿透查看機構評等明細。",
+        "dialog_feat3": "📊 **穿透式財務基本面與估值**：杜邦分析、現金轉換週期 (CCC) 與逆向 DCF 成長模型。",
+        "dialog_disclaimer": "⚠️ **免責聲明**：本平台提供之數據與量化模型僅供學術研究與決策參考，不構成任何投資建議。市場有風險，投資需謹慎。",
+        "dialog_agree_btn": "我已充分理解並同意，開始使用終端",
+        "dialog_reopen_btn": "📖 終端使用說明 / 介紹",
     },
     "en": {
         "pipeline": "MODE SELECTION",
@@ -274,7 +282,15 @@ I18N = {
         "implied_cagr": "Implied 5-Year FCF Annualized CAGR",
         "peers_title": "CROSS-MARKET PEER BENCHMARK (USD STANDARDIZED)",
         "news_title": "BREAKING WIRE // 5-DAY REAL-TIME NEWS",
-        "no_news": "No wire feeds found within past 5 days."
+        "no_news": "No wire feeds found within past 5 days.",
+        "dialog_title": "Welcome to THESTOCKs Quant Terminal",
+        "dialog_intro": "THESTOCKs is an institutional-grade multi-market terminal designed for transparent equity and ETF valuation.",
+        "dialog_feat1": "⚡ **Real-Time TradingView Terminal**: Native interactive charts with multi-period technical support.",
+        "dialog_feat2": "🎯 **Wall Street Consensus & 12M Cone**: Transparent analyst rating breakdown and price targets.",
+        "dialog_feat3": "📊 **Deep Fundamentals & Valuation**: DuPont breakdown, CCC working capital, and Reverse DCF models.",
+        "dialog_disclaimer": "⚠️ **Disclaimer**: All metrics and quantitative models are for academic and research purposes only, not financial advice.",
+        "dialog_agree_btn": "I Understand & Agree, Launch Terminal",
+        "dialog_reopen_btn": "📖 Platform Guide / Intro",
     }
 }
 
@@ -440,6 +456,34 @@ pipeline_mode = st.sidebar.radio(
 
 st.sidebar.caption(f"USDT / TWD FX: **{USD_TWD:.2f}**")
 
+# ==========================================
+# 歡迎導覽彈窗 (Welcome Onboarding Dialog)
+# ==========================================
+if "terms_agreed" not in st.session_state:
+    st.session_state.terms_agreed = False
+
+@st.dialog(T["dialog_title"])
+def show_welcome_dialog():
+    st.markdown(f"""
+    <div style="line-height: 1.6; color: #eaecef; font-size: 0.92rem;">
+        <p style="color: #f0b90b; font-weight: 600;">{T['dialog_intro']}</p>
+        <div style="background: #181a20; border: 1px solid #262932; border-radius: 6px; padding: 12px; margin: 12px 0;">
+            <p style="margin-bottom: 8px;">{T['dialog_feat1']}</p>
+            <p style="margin-bottom: 8px;">{T['dialog_feat2']}</p>
+            <p style="margin-bottom: 0px;">{T['dialog_feat3']}</p>
+        </div>
+        <p style="font-size: 0.8rem; color: #848e9c; margin-top: 10px;">{T['dialog_disclaimer']}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button(T["dialog_agree_btn"], use_container_width=True, type="primary"):
+        st.session_state.terms_agreed = True
+        st.rerun()
+
+# 首次進站未同意時自動跳出彈窗
+if not st.session_state.terms_agreed:
+    show_welcome_dialog()
+
+
 if pipeline_mode == T["p_equity"]:
     input_choice = st.sidebar.radio(T["selection"], [T["hot_stocks"], T["custom_stock"]], horizontal=True)
     if input_choice == T["hot_stocks"]:
@@ -467,6 +511,11 @@ else:
     suggested_peers = ETF_PEERS.get(ticker, ["0050.TW", "SPY", "QQQ"])
     all_peers = [ticker] + [p for p in suggested_peers if p != ticker]
     peer_input = st.sidebar.text_input(T["peers_basket"], value=",".join(all_peers))
+
+
+st.sidebar.markdown("---")
+if st.sidebar.button(T["dialog_reopen_btn"], use_container_width=True):
+    show_welcome_dialog()
 
 if not ticker:
     st.stop()
