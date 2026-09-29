@@ -369,6 +369,7 @@ def get_market_overview():
             res.append({
                 "name": item["name"],
                 "sub": item["sub"],
+                "ticker": item["ticker"],
                 "cur": cur,
                 "chg_pct": chg_pct,
                 "closes": hist['Close'].tolist()[-25:]
