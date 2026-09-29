@@ -583,9 +583,8 @@ if pipeline_mode == "企業個股深度診斷迴路":
                     paper_bgcolor="#181a20", plot_bgcolor="#181a20",
                     xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor="#262932", side="right"),
                     legend=dict(orientation="h", yanchor="bottom", y=-0.28, xanchor="center", x=0.5),
-                    config={'displayModeBar': False}
-                )
-                st.plotly_chart(fig_cone, use_container_width=True)
+                    )
+                st.plotly_chart(fig_cone, use_container_width=True, config={'displayModeBar': False})
 
         with col_opinions:
             st.markdown(f"**分析師共識（{num_analysts} 位分析師）**")
