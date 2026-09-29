@@ -12,7 +12,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 # ==========================================
-# 0. 頁面配置與 THESTOCKs 極致暗黑交易終端 CSS
+# 0. 頁面配置與 TradingView Clean Dark CSS
 # ==========================================
 st.set_page_config(
     page_title="THESTOCKs // QUANT TERMINAL",
@@ -22,81 +22,83 @@ st.set_page_config(
 
 st.markdown("""
 <style>
+    /* TradingView Clean Dark Palette */
     .stApp {
-        background-color: #0e0f14 !important;
-        color: #eaecef !important;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+        background-color: #131722 !important;
+        color: #d1d4dc !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif;
     }
     section[data-testid="stSidebar"] {
-        background-color: #14151b !important;
-        border-right: 1px solid #23272e !important;
+        background-color: #1e222d !important;
+        border-right: 1px solid #2a2e39 !important;
     }
-    .bybit-header {
-        background: #181a20;
-        border: 1px solid #262932;
-        border-radius: 4px;
-        padding: 12px 18px;
+    .tv-header {
+        background: #1e222d;
+        border: 1px solid #2a2e39;
+        border-radius: 6px;
+        padding: 14px 20px;
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 24px;
-        margin-bottom: 12px;
+        gap: 28px;
+        margin-bottom: 14px;
     }
-    .bybit-title {
-        font-size: 1.15rem;
+    .tv-title {
+        font-size: 1.2rem;
         font-weight: 700;
-        letter-spacing: 0.05em;
-        color: #f0b90b;
-        border-right: 1px solid #2b2f36;
-        padding-right: 18px;
+        letter-spacing: 0.04em;
+        color: #f0f3fa;
+        border-right: 1px solid #2a2e39;
+        padding-right: 20px;
         display: flex;
         align-items: center;
         gap: 8px;
     }
-    .bybit-price {
-        font-family: 'SF Mono', Monaco, Menlo, Consolas, monospace;
-        font-size: 1.6rem;
+    .tv-price {
+        font-family: 'SF Mono', Menlo, Monaco, Consolas, monospace;
+        font-size: 1.65rem;
         font-weight: 700;
         line-height: 1;
     }
-    .bybit-metric-label {
-        font-size: 0.68rem;
-        color: #848e9c;
+    .tv-metric-label {
+        font-size: 0.7rem;
+        color: #787b86;
         text-transform: uppercase;
         letter-spacing: 0.04em;
-        margin-bottom: 2px;
+        margin-bottom: 3px;
+        font-weight: 500;
     }
-    .bybit-metric-val {
-        font-family: 'SF Mono', Monaco, Menlo, Consolas, monospace;
-        font-size: 0.95rem;
+    .tv-metric-val {
+        font-family: 'SF Mono', Menlo, Monaco, Consolas, monospace;
+        font-size: 0.98rem;
         font-weight: 600;
-        color: #eaecef;
+        color: #d1d4dc;
     }
-    .bybit-section-title {
-        font-size: 0.84rem;
+    .tv-section-title {
+        font-size: 0.85rem;
         font-weight: 700;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.05em;
         text-transform: uppercase;
-        color: #f0b90b;
-        border-left: 3px solid #f0b90b;
-        padding-left: 8px;
-        margin-top: 14px;
-        margin-bottom: 8px;
+        color: #2962ff;
+        border-left: 3px solid #2962ff;
+        padding-left: 10px;
+        margin-top: 16px;
+        margin-bottom: 10px;
     }
     .bar-container {
         display: flex;
         align-items: center;
-        margin-bottom: 6px;
+        margin-bottom: 7px;
         font-size: 0.82rem;
     }
     .bar-label {
-        width: 60px;
-        color: #848e9c;
+        width: 55px;
+        color: #787b86;
     }
     .bar-track {
         flex-grow: 1;
         height: 6px;
-        background: #262932;
+        background: #2a2e39;
         border-radius: 3px;
         overflow: hidden;
         margin: 0 10px;
@@ -106,57 +108,58 @@ st.markdown("""
         border-radius: 3px;
     }
     .bar-pct {
-        width: 40px;
+        width: 42px;
         text-align: right;
         font-family: monospace;
-        color: #eaecef;
+        color: #d1d4dc;
     }
-    .bybit-news-card {
-        background: #181a20;
-        border: 1px solid #262932;
-        border-left: 3px solid #3a7bd5;
-        border-radius: 4px;
-        padding: 10px 14px;
-        margin-bottom: 8px;
+    .tv-news-card {
+        background: #1e222d;
+        border: 1px solid #2a2e39;
+        border-left: 3px solid #2962ff;
+        border-radius: 6px;
+        padding: 12px 16px;
+        margin-bottom: 10px;
+        transition: background 0.2s ease;
     }
-    .bybit-news-card:hover {
-        border-left-color: #f0b90b;
-        background: #1f222a;
+    .tv-news-card:hover {
+        background: #242836;
+        border-color: #363c4e;
     }
-    .bybit-news-title {
-        font-size: 0.9rem;
+    .tv-news-title {
+        font-size: 0.92rem;
         font-weight: 600;
-        color: #eaecef;
+        color: #d1d4dc;
         text-decoration: none;
     }
-    .bybit-news-title:hover {
-        color: #f0b90b;
+    .tv-news-title:hover {
+        color: #2962ff;
     }
-    .bybit-news-meta {
-        font-size: 0.72rem;
-        color: #848e9c;
-        margin-top: 4px;
+    .tv-news-meta {
+        font-size: 0.74rem;
+        color: #787b86;
+        margin-top: 5px;
         font-family: monospace;
     }
     button[data-baseweb="tab"] {
-        font-size: 0.9rem !important;
+        font-size: 0.92rem !important;
         font-weight: 700 !important;
-        color: #848e9c !important;
-        padding: 10px 16px !important;
+        color: #787b86 !important;
+        padding: 10px 18px !important;
     }
     button[data-baseweb="tab"][aria-selected="true"] {
-        color: #f0b90b !important;
-        border-bottom-color: #f0b90b !important;
+        color: #2962ff !important;
+        border-bottom-color: #2962ff !important;
     }
     .stDataFrame {
-        border: 1px solid #262932;
-        border-radius: 4px;
+        border: 1px solid #2a2e39;
+        border-radius: 6px;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 1. 雙語國際化字典 (去 AI 感、冷靜終端風格)
+# 1. 雙語國際化字典
 # ==========================================
 I18N = {
     "zh": {
@@ -183,7 +186,7 @@ I18N = {
         "t_high": "最高目標",
         "t_low": "最低目標",
         "t_mean_lbl": "平均目標",
-        "curr_price_lbl": "現價",
+        "curr_price_lbl": "目前",
         "consensus_title": "分析師共識",
         "consensus_rating": "共識評等",
         "buy": "買入",
@@ -430,24 +433,24 @@ def safe_extract(df, candidate_keys):
 # ==========================================
 # 3. 側邊欄控制台
 # ==========================================
-st.sidebar.markdown("<div style='color: #f0b90b; font-weight:800; font-size:1.3rem; letter-spacing:0.06em; margin-bottom:10px;'>THESTOCKs</div>", unsafe_allow_html=True)
+st.sidebar.markdown("<div style='color: #2962ff; font-weight:800; font-size:1.35rem; letter-spacing:0.04em; margin-bottom:10px;'>THESTOCKs</div>", unsafe_allow_html=True)
 
 lang_choice = st.sidebar.radio("🌐 語言 / LANGUAGE", ["繁體中文", "English"], horizontal=True)
 lang = "zh" if lang_choice == "繁體中文" else "en"
 T = I18N[lang]
 
-# 彈窗狀態機制
+# 彈窗控制
 if "terms_agreed" not in st.session_state:
     st.session_state.terms_agreed = False
 
 @st.dialog(T["dialog_title"])
 def show_welcome_dialog():
     st.markdown(f"""
-    <div style="line-height: 1.5; color: #eaecef; font-size: 0.88rem;">
+    <div style="line-height: 1.5; color: #d1d4dc; font-size: 0.88rem;">
         <p style="margin-bottom: 8px;">{T['dialog_intro']}</p>
-        <p style="margin-bottom: 4px; color: #848e9c;">{T['dialog_feat1']}</p>
-        <p style="margin-bottom: 12px; color: #848e9c;">{T['dialog_feat2']}</p>
-        <div style="font-size: 0.75rem; color: #5e6673; border-top: 1px solid #23272e; padding-top: 8px; margin-bottom: 12px;">
+        <p style="margin-bottom: 4px; color: #787b86;">{T['dialog_feat1']}</p>
+        <p style="margin-bottom: 12px; color: #787b86;">{T['dialog_feat2']}</p>
+        <div style="font-size: 0.75rem; color: #50535e; border-top: 1px solid #2a2e39; padding-top: 8px; margin-bottom: 12px;">
             {T['dialog_disclaimer']}
         </div>
     </div>
@@ -531,10 +534,10 @@ if pipeline_mode == T["p_equity"]:
     mcap_usd = (raw_mcap_local / USD_TWD) if is_twd else raw_mcap_local
     mcap_usd_b = mcap_usd / 1e9
 
-    bybit_green = "#00c087"
-    bybit_red = "#f6465d"
+    tv_green = "#089981"
+    tv_red = "#f23645"
     is_up = change >= 0
-    theme_color = bybit_green if is_up else bybit_red
+    theme_color = tv_green if is_up else tv_red
 
     # 52W 計算
     if not chart_1y.empty:
@@ -567,34 +570,34 @@ if pipeline_mode == T["p_equity"]:
     f_pe_str = f"{f_pe:.1f}x"
 
     st.markdown(f"""
-    <div class="bybit-header">
-        <div class="bybit-title">
+    <div class="tv-header">
+        <div class="tv-title">
             <span>[EQUITY] {ticker}</span>
-            <span style="font-size:0.75rem; color:#848e9c; font-weight:normal;">{info.get('shortName', ticker)}</span>
+            <span style="font-size:0.78rem; color:#787b86; font-weight:normal;">{info.get('shortName', ticker)}</span>
         </div>
         <div>
-            <div class="bybit-metric-label">{T['last_price']} ({curr})</div>
-            <div class="bybit-price" style="color: {theme_color};">
+            <div class="tv-metric-label">{T['last_price']} ({curr})</div>
+            <div class="tv-price" style="color: {theme_color};">
                 {curr_sym}{current_price:,.2f}
                 <span style="font-size: 0.95rem; margin-left: 6px;">{'+' if is_up else ''}{change:.2f} ({'+' if is_up else ''}{pct_change:.2f}%)</span>
             </div>
         </div>
         <div>
-            <div class="bybit-metric-label">{T['range_52w']}</div>
-            <div style="font-size: 0.85rem; font-family: monospace; color:#eaecef;">
+            <div class="tv-metric-label">{T['range_52w']}</div>
+            <div style="font-size: 0.88rem; font-family: monospace; color:#d1d4dc;">
                 {curr_sym}{low52:.1f} - {curr_sym}{high52:.1f}
             </div>
-            <div style="width: 140px; height: 5px; background: #2b2f36; border-radius: 2px; margin-top: 6px;">
+            <div style="width: 140px; height: 4px; background: #2a2e39; border-radius: 2px; margin-top: 6px;">
                 <div style="width: {pos52:.0f}%; height: 100%; background: {theme_color}; border-radius: 2px;"></div>
             </div>
         </div>
         <div>
-            <div class="bybit-metric-label">{T['val_fwd_ttm']}</div>
-            <div class="bybit-metric-val">{f_pe_str} / {t_pe_str}</div>
+            <div class="tv-metric-label">{T['val_fwd_ttm']}</div>
+            <div class="tv-metric-val">{f_pe_str} / {t_pe_str}</div>
         </div>
         <div>
-            <div class="bybit-metric-label">{T['mcap_usd']}</div>
-            <div class="bybit-metric-val" style="color: #f0b90b;">${mcap_usd_b:,.1f}B USD</div>
+            <div class="tv-metric-label">{T['mcap_usd']}</div>
+            <div class="tv-metric-val" style="color: #2962ff;">${mcap_usd_b:,.1f}B USD</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -628,7 +631,7 @@ if pipeline_mode == T["p_equity"]:
     # TAB 1: 即時行情與分析
     # --------------------------------------------------------------------------
     with tab_analytics:
-        st.markdown(f"<div class='bybit-section-title'>{T['tv_title']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='tv-section-title'>{T['tv_title']}</div>", unsafe_allow_html=True)
         
         if ticker.endswith(".TW"):
             tv_symbol = f"TWSE:{ticker.replace('.TW', '')}"
@@ -652,13 +655,13 @@ if pipeline_mode == T["p_equity"]:
             "theme": "dark",
             "style": "1",
             "locale": "{tv_locale}",
-            "toolbar_bg": "#14151b",
+            "toolbar_bg": "#1e222d",
             "enable_publishing": false,
             "hide_top_toolbar": false,
             "hide_legend": false,
             "save_image": false,
-            "backgroundColor": "#14151b",
-            "gridColor": "#23272e",
+            "backgroundColor": "#131722",
+            "gridColor": "#2a2e39",
             "container_id": "tradingview_chart"
           }}
           );
@@ -667,7 +670,7 @@ if pipeline_mode == T["p_equity"]:
         """
         components.html(tv_widget_html, height=490)
 
-        st.markdown(f"<div class='bybit-section-title'>{T['target_12m']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='tv-section-title'>{T['target_12m']}</div>", unsafe_allow_html=True)
 
         t_mean = info.get("targetMeanPrice")
         t_high = info.get("targetHighPrice")
@@ -703,11 +706,11 @@ if pipeline_mode == T["p_equity"]:
 
         with col_cone:
             st.markdown(f"""
-            <div style="background:#14151b; border: 1px solid #262932; border-radius: 6px; padding: 12px 16px; margin-bottom: 8px;">
-                <div style="font-size:0.75rem; color:#848e9c; text-transform:uppercase;">{T['target_mean']}</div>
-                <div style="font-size:1.6rem; font-weight:800; font-family:monospace; color:#eaecef;">
+            <div style="background:#1e222d; border: 1px solid #2a2e39; border-radius: 6px; padding: 12px 18px; margin-bottom: 10px;">
+                <div style="font-size:0.75rem; color:#787b86; text-transform:uppercase;">{T['target_mean']}</div>
+                <div style="font-size:1.6rem; font-weight:800; font-family:monospace; color:#d1d4dc;">
                     {curr_sym}{t_mean:.2f}
-                    <span style="font-size: 0.95rem; font-weight: 700; color: {'#00c087' if implied_upside >= 0 else '#f6465d'}; margin-left: 8px;">
+                    <span style="font-size: 0.95rem; font-weight: 700; color: {'#089981' if implied_upside >= 0 else '#f23645'}; margin-left: 8px;">
                         {'+' if implied_upside >= 0 else ''}{implied_upside:.2f}%
                     </span>
                 </div>
@@ -724,34 +727,34 @@ if pipeline_mode == T["p_equity"]:
                 lbl_curr = "目前" if lang == "zh" else "Current"
 
                 fig_cone = go.Figure()
-                fig_cone.add_trace(go.Scatter(x=chart_1y.index, y=chart_1y['Close'], mode='lines', name=T['hist_trend'], line=dict(color="#eaecef", width=1.8), hoverinfo='skip'))
-                fig_cone.add_trace(go.Scatter(x=[last_dt, future_dt], y=[current_price, t_high], mode='lines', name=T['t_high'], line=dict(color="rgba(0, 192, 135, 0.4)", width=1.2, dash="dot"), hoverinfo='skip'))
-                fig_cone.add_trace(go.Scatter(x=[last_dt, future_dt], y=[current_price, t_low], mode='lines', name=T['t_low'], line=dict(color="rgba(246, 70, 93, 0.4)", width=1.2, dash="dot"), fill='tonexty', fillcolor='rgba(240, 185, 11, 0.06)', hoverinfo='skip'))
-                fig_cone.add_trace(go.Scatter(x=[last_dt, future_dt], y=[current_price, t_mean], mode='lines', name=T['t_mean_lbl'], line=dict(color="#f0b90b", width=2.0, dash="dash"), hoverinfo='skip'))
-                fig_cone.add_trace(go.Scatter(x=[last_dt], y=[current_price], mode='markers', name=T['curr_price_lbl'], marker=dict(color="#ffffff", size=6, line=dict(color="#181a20", width=2)), hoverinfo='skip'))
+                fig_cone.add_trace(go.Scatter(x=chart_1y.index, y=chart_1y['Close'], mode='lines', name=T['hist_trend'], line=dict(color="#d1d4dc", width=1.8), hoverinfo='skip'))
+                fig_cone.add_trace(go.Scatter(x=[last_dt, future_dt], y=[current_price, t_high], mode='lines', name=T['t_high'], line=dict(color="rgba(8, 153, 129, 0.4)", width=1.2, dash="dot"), hoverinfo='skip'))
+                fig_cone.add_trace(go.Scatter(x=[last_dt, future_dt], y=[current_price, t_low], mode='lines', name=T['t_low'], line=dict(color="rgba(242, 54, 69, 0.4)", width=1.2, dash="dot"), fill='tonexty', fillcolor='rgba(41, 98, 255, 0.05)', hoverinfo='skip'))
+                fig_cone.add_trace(go.Scatter(x=[last_dt, future_dt], y=[current_price, t_mean], mode='lines', name=T['t_mean_lbl'], line=dict(color="#2962ff", width=2.0, dash="dash"), hoverinfo='skip'))
+                fig_cone.add_trace(go.Scatter(x=[last_dt], y=[current_price], mode='markers', name=T['curr_price_lbl'], marker=dict(color="#ffffff", size=6, line=dict(color="#1e222d", width=2)), hoverinfo='skip'))
 
                 fig_cone.update_layout(
                     annotations=[
-                        dict(x=future_dt, y=t_high, xref="x", yref="y", text=f"<b>{lbl_high} {curr_sym}{t_high:,.2f}</b>", showarrow=False, xanchor="left", bgcolor="#00c087", font=dict(color="#ffffff", size=11, family="sans-serif"), borderpad=5, bordercolor="#00c087", borderwidth=1),
-                        dict(x=future_dt, y=t_mean, xref="x", yref="y", text=f"<b>{lbl_mean} {curr_sym}{t_mean:,.2f}</b>", showarrow=False, xanchor="left", bgcolor="#008060", font=dict(color="#ffffff", size=11, family="sans-serif"), borderpad=5, bordercolor="#008060", borderwidth=1),
-                        dict(x=future_dt, y=t_low, xref="x", yref="y", text=f"<b>{lbl_low} {curr_sym}{t_low:,.2f}</b>", showarrow=False, xanchor="left", bgcolor="#f6465d", font=dict(color="#ffffff", size=11, family="sans-serif"), borderpad=5, bordercolor="#f6465d", borderwidth=1),
-                        dict(x=last_dt, y=current_price, xref="x", yref="y", text=f"<b>{lbl_curr}</b><br>{curr_sym}{current_price:,.2f}", showarrow=True, arrowhead=0, arrowcolor="#848e9c", ax=0, ay=35, font=dict(color="#eaecef", size=10, family="monospace"))
+                        dict(x=future_dt, y=t_high, xref="x", yref="y", text=f"<b>{lbl_high} {curr_sym}{t_high:,.2f}</b>", showarrow=False, xanchor="left", bgcolor="#089981", font=dict(color="#ffffff", size=11), borderpad=5, bordercolor="#089981", borderwidth=1),
+                        dict(x=future_dt, y=t_mean, xref="x", yref="y", text=f"<b>{lbl_mean} {curr_sym}{t_mean:,.2f}</b>", showarrow=False, xanchor="left", bgcolor="#1e5387", font=dict(color="#ffffff", size=11), borderpad=5, bordercolor="#1e5387", borderwidth=1),
+                        dict(x=future_dt, y=t_low, xref="x", yref="y", text=f"<b>{lbl_low} {curr_sym}{t_low:,.2f}</b>", showarrow=False, xanchor="left", bgcolor="#f23645", font=dict(color="#ffffff", size=11), borderpad=5, bordercolor="#f23645", borderwidth=1),
+                        dict(x=last_dt, y=current_price, xref="x", yref="y", text=f"<b>{lbl_curr}</b><br>{curr_sym}{current_price:,.2f}", showarrow=True, arrowhead=0, arrowcolor="#787b86", ax=0, ay=35, font=dict(color="#d1d4dc", size=10, family="monospace"))
                     ],
                     template="plotly_dark", height=280,
                     margin=dict(l=10, r=130, t=20, b=35),
-                    paper_bgcolor="#181a20", plot_bgcolor="#181a20",
+                    paper_bgcolor="#1e222d", plot_bgcolor="#1e222d",
                     xaxis=dict(showgrid=False, showticklabels=True),
-                    yaxis=dict(showgrid=True, gridcolor="#262932", side="left", showticklabels=True),
+                    yaxis=dict(showgrid=True, gridcolor="#2a2e39", side="left", showticklabels=True),
                     showlegend=False
                 )
                 st.plotly_chart(fig_cone, use_container_width=True, config={'displayModeBar': False})
 
         with col_opinions:
             st.markdown(f"**{T['consensus_title']} ({num_analysts})**")
-            rec_color = bybit_green if "BUY" in rec_key else ("#f0b90b" if "HOLD" in rec_key else bybit_red)
+            rec_color = tv_green if "BUY" in rec_key else ("#2962ff" if "HOLD" in rec_key else tv_red)
             st.markdown(f"""
-            <div style="background: #1f222a; border-radius: 4px; padding: 10px 14px; margin-bottom: 12px; border-left: 3px solid {rec_color};">
-                <div style="font-size:0.72rem; color:#848e9c; text-transform:uppercase;">{T['consensus_rating']}</div>
+            <div style="background: #242836; border-radius: 6px; padding: 12px 16px; margin-bottom: 12px; border-left: 3px solid {rec_color};">
+                <div style="font-size:0.72rem; color:#787b86; text-transform:uppercase;">{T['consensus_rating']}</div>
                 <div style="font-size:1.25rem; font-weight:800; color:{rec_color}; margin-top:2px;">{rec_key}</div>
             </div>
             """, unsafe_allow_html=True)
@@ -759,18 +762,18 @@ if pipeline_mode == T["p_equity"]:
             b_pct, h_pct, s_pct = 85, 12, 3
             st.markdown(f"""
             <div class="bar-container">
-                <div class="bar-label" style="color: #00c087; font-weight: bold;">{T['buy']}</div>
-                <div class="bar-track"><div class="bar-fill" style="width: {b_pct}%; background: #00c087;"></div></div>
+                <div class="bar-label" style="color: #089981; font-weight: bold;">{T['buy']}</div>
+                <div class="bar-track"><div class="bar-fill" style="width: {b_pct}%; background: #089981;"></div></div>
                 <div class="bar-pct">{b_pct}%</div>
             </div>
             <div class="bar-container">
-                <div class="bar-label" style="color: #848e9c;">{T['hold']}</div>
-                <div class="bar-track"><div class="bar-fill" style="width: {h_pct}%; background: #848e9c;"></div></div>
+                <div class="bar-label" style="color: #787b86;">{T['hold']}</div>
+                <div class="bar-track"><div class="bar-fill" style="width: {h_pct}%; background: #787b86;"></div></div>
                 <div class="bar-pct">{h_pct}%</div>
             </div>
             <div class="bar-container">
-                <div class="bar-label" style="color: #f6465d;">{T['sell']}</div>
-                <div class="bar-track"><div class="bar-fill" style="width: {s_pct}%; background: #f6465d;"></div></div>
+                <div class="bar-label" style="color: #f23645;">{T['sell']}</div>
+                <div class="bar-track"><div class="bar-fill" style="width: {s_pct}%; background: #f23645;"></div></div>
                 <div class="bar-pct">{s_pct}%</div>
             </div>
             """, unsafe_allow_html=True)
@@ -807,23 +810,23 @@ if pipeline_mode == T["p_equity"]:
     # TAB 2: 深度基本面
     # --------------------------------------------------------------------------
     with tab_fundamentals:
-        st.markdown(f"<div class='bybit-section-title'>{T['audit_title']}</div>", unsafe_allow_html=True)
-        st.markdown(f"<div style='color:{bybit_green}; font-size:0.85rem; padding: 6px 0; font-family:monospace;'>{T['audit_pass']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='tv-section-title'>{T['audit_title']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='color:{tv_green}; font-size:0.85rem; padding: 6px 0; font-family:monospace;'>{T['audit_pass']}</div>", unsafe_allow_html=True)
 
         c_p1, c_p2 = st.columns([1.2, 1])
         with c_p1:
-            st.markdown(f"<div class='bybit-section-title'>{T['margin_title']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='tv-section-title'>{T['margin_title']}</div>", unsafe_allow_html=True)
             fig1 = make_subplots(specs=[[{"secondary_y": True}]])
-            fig1.add_trace(go.Bar(x=years, y=rev_series/1e9, name="Revenue ($B)", marker_color="#2b2f36"), secondary_y=False)
-            fig1.add_trace(go.Bar(x=years, y=op_series/1e9, name="Operating Income ($B)", marker_color="#3a7bd5"), secondary_y=False)
-            fig1.add_trace(go.Scatter(x=years, y=gross_margin, name="Gross Margin %", line=dict(color="#00c087", width=2)), secondary_y=True)
-            fig1.add_trace(go.Scatter(x=years, y=op_margin, name="Operating Margin %", line=dict(color="#f0b90b", width=2, dash='dot')), secondary_y=True)
+            fig1.add_trace(go.Bar(x=years, y=rev_series/1e9, name="Revenue ($B)", marker_color="#2a2e39"), secondary_y=False)
+            fig1.add_trace(go.Bar(x=years, y=op_series/1e9, name="Operating Income ($B)", marker_color="#2962ff"), secondary_y=False)
+            fig1.add_trace(go.Scatter(x=years, y=gross_margin, name="Gross Margin %", line=dict(color="#089981", width=2)), secondary_y=True)
+            fig1.add_trace(go.Scatter(x=years, y=op_margin, name="Operating Margin %", line=dict(color="#2962ff", width=2, dash='dot')), secondary_y=True)
             fig1.update_layout(barmode="group", template="plotly_dark", height=260, margin=dict(l=10, r=10, t=10, b=10),
-                               paper_bgcolor="#181a20", plot_bgcolor="#181a20", legend=dict(orientation="h", y=1.1, x=0))
+                               paper_bgcolor="#1e222d", plot_bgcolor="#1e222d", legend=dict(orientation="h", y=1.1, x=0))
             st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
 
         with c_p2:
-            st.markdown(f"<div class='bybit-section-title'>{T['dupont_title']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='tv-section-title'>{T['dupont_title']}</div>", unsafe_allow_html=True)
             nm_vals, at_vals, em_vals, roe_vals = [], [], [], []
             for yr_col in common_cols:
                 r = rev_series.get(yr_col, np.nan)
@@ -847,27 +850,27 @@ if pipeline_mode == T["p_equity"]:
 
         c_cf1, c_cf2 = st.columns(2)
         with c_cf1:
-            st.markdown(f"<div class='bybit-section-title'>{T['cfo_fcf_title']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='tv-section-title'>{T['cfo_fcf_title']}</div>", unsafe_allow_html=True)
             fig2 = go.Figure()
-            fig2.add_trace(go.Bar(x=years, y=cfo_series/1e9, name="CFO ($B)", marker_color="#3a7bd5"))
-            fig2.add_trace(go.Bar(x=years, y=capex_series/1e9, name="CapEx ($B)", marker_color="#f6465d"))
-            fig2.add_trace(go.Bar(x=years, y=fcf_series/1e9, name="FCF ($B)", marker_color="#00c087"))
+            fig2.add_trace(go.Bar(x=years, y=cfo_series/1e9, name="CFO ($B)", marker_color="#2962ff"))
+            fig2.add_trace(go.Bar(x=years, y=capex_series/1e9, name="CapEx ($B)", marker_color="#f23645"))
+            fig2.add_trace(go.Bar(x=years, y=fcf_series/1e9, name="FCF ($B)", marker_color="#089981"))
             fig2.update_layout(barmode="group", template="plotly_dark", height=240, margin=dict(l=10, r=10, t=10, b=10),
-                              paper_bgcolor="#181a20", plot_bgcolor="#181a20", legend=dict(orientation="h", y=1.1, x=0))
+                              paper_bgcolor="#1e222d", plot_bgcolor="#1e222d", legend=dict(orientation="h", y=1.1, x=0))
             st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
 
         with c_cf2:
-            st.markdown(f"<div class='bybit-section-title'>{T['shareholder_yield_title']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='tv-section-title'>{T['shareholder_yield_title']}</div>", unsafe_allow_html=True)
             div_paid = safe_extract(c_cf, ["Cash Dividends Paid", "Common Stock Dividend Paid"]).abs()
             repurchase = safe_extract(c_cf, ["Common Stock Repurchased", "Repurchase Of Capital Stock"]).abs()
             if div_paid.empty: div_paid = pd.Series(0, index=common_cols)
             if repurchase.empty: repurchase = pd.Series(0, index=common_cols)
 
             fig_sy = go.Figure()
-            fig_sy.add_trace(go.Bar(x=years, y=div_paid/1e9, name='Dividends ($B)', marker_color='#3a7bd5'))
-            fig_sy.add_trace(go.Bar(x=years, y=repurchase/1e9, name='Buybacks ($B)', marker_color='#f0b90b'))
+            fig_sy.add_trace(go.Bar(x=years, y=div_paid/1e9, name='Dividends ($B)', marker_color='#2962ff'))
+            fig_sy.add_trace(go.Bar(x=years, y=repurchase/1e9, name='Buybacks ($B)', marker_color='#1e5387'))
             fig_sy.update_layout(barmode='stack', template="plotly_dark", height=240, margin=dict(l=10, r=10, t=10, b=10),
-                                 paper_bgcolor="#181a20", plot_bgcolor="#181a20", yaxis=dict(gridcolor="#262932"), legend=dict(orientation="h", y=1.1, x=0))
+                                 paper_bgcolor="#1e222d", plot_bgcolor="#1e222d", yaxis=dict(gridcolor="#2a2e39"), legend=dict(orientation="h", y=1.1, x=0))
             st.plotly_chart(fig_sy, use_container_width=True, config={'displayModeBar': False})
 
     # --------------------------------------------------------------------------
@@ -876,7 +879,7 @@ if pipeline_mode == T["p_equity"]:
     with tab_valuation:
         col_v1, col_v2 = st.columns(2)
         with col_v1:
-            st.markdown(f"<div class='bybit-section-title'>{T['ccc_title']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='tv-section-title'>{T['ccc_title']}</div>", unsafe_allow_html=True)
             cogs_series = safe_extract(c_inc, ["Cost Of Revenue", "CostOfRevenue", "Operating Expense"])
             if cogs_series.empty: cogs_series = rev_series * 0.5
             ar_series = safe_extract(c_bs, ["Accounts Receivable", "Receivables"])
@@ -889,16 +892,16 @@ if pipeline_mode == T["p_equity"]:
             ccc = dio + dso - dpo
 
             fig_ccc = go.Figure()
-            fig_ccc.add_trace(go.Scatter(x=years, y=dso, mode='lines+markers', name='DSO', line=dict(color='#848e9c', width=1.5)))
-            fig_ccc.add_trace(go.Scatter(x=years, y=dio, mode='lines+markers', name='DIO', line=dict(color='#f6465d', width=1.5)))
-            fig_ccc.add_trace(go.Scatter(x=years, y=dpo, mode='lines+markers', name='DPO', line=dict(color='#00c087', width=1.5)))
-            fig_ccc.add_trace(go.Scatter(x=years, y=ccc, mode='lines+markers', name='CCC', line=dict(color='#f0b90b', width=2.5, dash='dash')))
+            fig_ccc.add_trace(go.Scatter(x=years, y=dso, mode='lines+markers', name='DSO', line=dict(color='#787b86', width=1.5)))
+            fig_ccc.add_trace(go.Scatter(x=years, y=dio, mode='lines+markers', name='DIO', line=dict(color='#f23645', width=1.5)))
+            fig_ccc.add_trace(go.Scatter(x=years, y=dpo, mode='lines+markers', name='DPO', line=dict(color='#089981', width=1.5)))
+            fig_ccc.add_trace(go.Scatter(x=years, y=ccc, mode='lines+markers', name='CCC', line=dict(color='#2962ff', width=2.5, dash='dash')))
             fig_ccc.update_layout(template="plotly_dark", height=240, margin=dict(l=10, r=10, t=10, b=10),
-                                  paper_bgcolor="#181a20", plot_bgcolor="#181a20", yaxis=dict(gridcolor="#262932"), legend=dict(orientation="h", y=1.1, x=0))
+                                  paper_bgcolor="#1e222d", plot_bgcolor="#1e222d", yaxis=dict(gridcolor="#2a2e39"), legend=dict(orientation="h", y=1.1, x=0))
             st.plotly_chart(fig_ccc, use_container_width=True, config={'displayModeBar': False})
 
         with col_v2:
-            st.markdown(f"<div class='bybit-section-title'>{T['solvency_title']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='tv-section-title'>{T['solvency_title']}</div>", unsafe_allow_html=True)
             int_exp = safe_extract(c_inc, ["Interest Expense", "InterestExpense"]).abs()
             ebit = op_series
             int_cov = ebit / int_exp.replace(0, np.nan)
@@ -915,7 +918,7 @@ if pipeline_mode == T["p_equity"]:
             sc2.metric(T["net_debt"], f"{curr_sym}{latest_nd/1e9:,.1f} B", "淨現金" if latest_nd < 0 else "淨負債")
             sc3.metric(T["debt_ratio"], f"{dr:.1f}%")
 
-        st.markdown(f"<div class='bybit-section-title'>{T['dcf_title']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='tv-section-title'>{T['dcf_title']}</div>", unsafe_allow_html=True)
         latest_base_fcf = fcf_series.iloc[-1] if not fcf_series.empty else 0
         if raw_mcap_local > 0 and latest_base_fcf > 0:
             r1, r2 = st.columns([1, 1.5])
@@ -946,7 +949,7 @@ if pipeline_mode == T["p_equity"]:
     # TAB 4: 同業與新聞
     # --------------------------------------------------------------------------
     with tab_peers_news:
-        st.markdown(f"<div class='bybit-section-title'>{T['peers_title']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='tv-section-title'>{T['peers_title']}</div>", unsafe_allow_html=True)
         peer_raw_list = [normalize_ticker(p) for p in peer_input.split(",") if p.strip()]
         peer_tickers = [ticker] + [p for p in peer_raw_list if p != ticker]
 
@@ -996,18 +999,18 @@ if pipeline_mode == T["p_equity"]:
                        fcf_col: "{:.2f}x", roe_col: "{:.2f}%", pe_col: "{:.1f}x"}
                 st.dataframe(pdf.style.format(fmt, na_rep="-"), use_container_width=True)
 
-        st.markdown(f"<div class='bybit-section-title'>{T['news_title']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='tv-section-title'>{T['news_title']}</div>", unsafe_allow_html=True)
         live_news = fetch_realtime_news_5days([ticker] + [p for p in all_peers if p != ticker][:3])
         if live_news:
             n_col1, n_col2 = st.columns(2)
             for i, item in enumerate(live_news):
                 target_col = n_col1 if i % 2 == 0 else n_col2
-                badge_color = "#f0b90b" if item['ticker'] == ticker else "#3a7bd5"
+                badge_color = "#2962ff" if item['ticker'] == ticker else "#787b86"
                 with target_col:
                     st.markdown(f"""
-                    <div class="bybit-news-card">
-                        <a href="{item['link']}" target="_blank" class="bybit-news-title">{item['title']}</a>
-                        <div class="bybit-news-meta">
+                    <div class="tv-news-card">
+                        <a href="{item['link']}" target="_blank" class="tv-news-title">{item['title']}</a>
+                        <div class="tv-news-meta">
                             <span style="color: {badge_color}; font-weight: bold;">[{item['ticker']}]</span> 
                             • {item['publisher']} • {item['time_str']}
                         </div>
