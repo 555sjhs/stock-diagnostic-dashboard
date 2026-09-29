@@ -402,7 +402,11 @@ with col_search:
         label_visibility="collapsed"
     )
 
-ticker = normalize_ticker(search_input)
+raw_val = search_input.strip() if search_input else ""
+if not raw_val:
+    ticker = "NVDA"
+else:
+    ticker = normalize_ticker(raw_val)
 
 st.markdown(f"<div class='market-section-title'>{T['market_summary']} &rsaquo;</div>", unsafe_allow_html=True)
 
@@ -452,12 +456,16 @@ st.markdown("<div style='border-bottom: 1px solid #141418; margin: 12px 0 16px 0
 
 is_index = ticker.startswith("^") or ticker in ["TAIEX", "IX0001", "NDX", "SPX", "SOX", "QQQ", "SPY", "SOXX"]
 
+if not ticker:
+    st.info("請於上方搜尋列輸入欲查詢的股票代碼 (例: NVDA, AAPL, 2330, 0050) 或點選市場摘要。" if curr_lang == "zh" else "Enter a symbol above (e.g. NVDA, AAPL, 2330, 0050) or select from Market Overview.")
+    st.stop()
+
 with st.spinner(f"Loading: {ticker}..."):
     try:
         stock, info, inc, bs, cf = load_equity_data(ticker)
         chart_1y, fast_info = load_price_history(ticker, period="1y")
     except Exception as e:
-        st.error(f"DATA_FETCH_EXCEPTION: {e}")
+        st.warning(f"查無標的代碼 [{ticker}]，請確認輸入是否正確。" if curr_lang == "zh" else f"Symbol [{ticker}] not found. Please verify ticker.")
         st.stop()
 
 curr = info.get("currency") or ("TWD" if ".TW" in ticker or ticker == "^TWII" else "USD")
