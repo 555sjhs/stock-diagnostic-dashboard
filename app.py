@@ -635,25 +635,25 @@ tab_analytics, tab_fundamentals, tab_valuation, tab_peers_news = st.tabs([
 with tab_analytics:
     st.markdown(f"<div class='oled-section-title'>{T['tv_title']}</div>", unsafe_allow_html=True)
     
-    # 嚴謹映射 TradingView 官方原生代碼
+        # 嚴謹映射 TradingView 官方原生代碼
         if ticker in ["^TWII", "TAIEX", "IX0001"]:
-            tv_symbol = "TWSE:TAIEX"
+        tv_symbol = "TWSE:TAIEX"
         elif ticker in ["^NDX", "NDX", "QQQ"]:
-            tv_symbol = "NASDAQ:NDX"
+        tv_symbol = "NASDAQ:NDX"
         elif ticker in ["^GSPC", "SPX", "SPY"]:
-            tv_symbol = "SP:SPX"
+        tv_symbol = "SP:SPX"
         elif ticker in ["^SOX", "SOX", "SOXX"]:
-            tv_symbol = "INDEX:SOX"
+        tv_symbol = "INDEX:SOX"
         elif ticker.endswith(".TW"):
-            tv_symbol = f"TWSE:{ticker.replace('.TW', '')}"
+        tv_symbol = f"TWSE:{ticker.replace('.TW', '')}"
         elif ticker.endswith(".TWO"):
-            tv_symbol = f"TPEX:{ticker.replace('.TWO', '')}"
+        tv_symbol = f"TPEX:{ticker.replace('.TWO', '')}"
         elif ticker in ["SPY", "VOO", "IVV"]:
-            tv_symbol = f"AMEX:{ticker}"
+        tv_symbol = f"AMEX:{ticker}"
         elif ticker in ["SOXX", "QQQ", "NVDA", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA", "NFLX", "AMD", "AVGO", "INTC", "MU"]:
-            tv_symbol = f"NASDAQ:{ticker}"
+        tv_symbol = f"NASDAQ:{ticker}"
         else:
-            tv_symbol = f"NYSE:{ticker}"
+        tv_symbol = f"NYSE:{ticker}"
 
     tv_locale = "zh_TW" if st.session_state.lang == "zh" else "en"
     tv_widget_html = f"""
