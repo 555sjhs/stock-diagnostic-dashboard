@@ -11,9 +11,6 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
-# ==========================================
-# 0. 頁面配置與 OLED 極致黑 CSS
-# ==========================================
 st.set_page_config(
     page_title="THESTOCKs // QUANT TERMINAL",
     layout="wide",
@@ -167,9 +164,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ==========================================
-# 1. 雙語國際化字典
-# ==========================================
 I18N = {
     "zh": {
         "market_summary": "市場摘要",
@@ -281,14 +275,12 @@ I18N = {
     }
 }
 
-# ==========================================
-# 2. 輔助函式與數據獲取
-# ==========================================
 def normalize_ticker(raw_input):
     sym = raw_input.strip().upper()
     tw_listed = ["0050", "0056", "006208", "00878", "00919", "00929", "2330", "2317", "2454", "2382", "2308", "3017", "2881", "3231", "6669"]
     for t in tw_listed:
-        if sym == f"{t}.TWO": return f"{t}.TW"
+        if sym == f"{t}.TWO":
+            return f"{t}.TW"
     if sym.isdigit() and len(sym) in [4, 5]:
         return f"{sym}.TW"
     return sym
@@ -355,9 +347,6 @@ def safe_extract(df, candidate_keys):
             return pd.to_numeric(s, errors="coerce")
     return pd.Series(dtype=float)
 
-# ==========================================
-# 3. 語言切換與歡迎彈窗
-# ==========================================
 if "terms_agreed" not in st.session_state:
     st.session_state.terms_agreed = False
 
@@ -401,9 +390,6 @@ def show_welcome_dialog():
 if not st.session_state.terms_agreed:
     show_welcome_dialog()
 
-# ==========================================
-# 4. 頂部搜尋列
-# ==========================================
 with col_brand:
     st.markdown("<div style='font-size: 1.35rem; font-weight: 800; color: #ffffff; letter-spacing: 0.05em; padding-top: 4px;'>THESTOCKs</div>", unsafe_allow_html=True)
 
@@ -418,9 +404,6 @@ with col_search:
 
 ticker = normalize_ticker(search_input)
 
-# ==========================================
-# 5. 市場摘要 (卡片點擊切換)
-# ==========================================
 st.markdown(f"<div class='market-section-title'>{T['market_summary']} &rsaquo;</div>", unsafe_allow_html=True)
 
 m_data = get_market_overview(lang=curr_lang)
@@ -467,9 +450,6 @@ if m_data:
 
 st.markdown("<div style='border-bottom: 1px solid #141418; margin: 12px 0 16px 0;'></div>", unsafe_allow_html=True)
 
-# ==========================================
-# 6. 行情數據讀取與保底
-# ==========================================
 is_index = ticker.startswith("^") or ticker in ["TAIEX", "IX0001", "NDX", "SPX", "SOX", "QQQ", "SPY", "SOXX"]
 
 with st.spinner(f"Loading: {ticker}..."):
@@ -504,7 +484,6 @@ pure_red = "#ff1744"
 is_up = change >= 0
 theme_color = pure_green if is_up else pure_red
 
-# 52W 計算
 if not chart_1y.empty:
     low52 = float(chart_1y['Close'].min())
     high52 = float(chart_1y['Close'].max())
@@ -513,13 +492,11 @@ else:
     high52 = info.get('fiftyTwoWeekHigh', current_price * 1.2)
 pos52 = ((current_price - low52) / (high52 - low52) * 100) if high52 > low52 else 50.0
 
-# 估值倍數
 t_pe = info.get("trailingPE", 28.5 if not is_index else 24.0)
 f_pe = info.get("forwardPE", 23.5 if not is_index else 21.0)
 t_pe_str = f"{t_pe:.1f}x" if t_pe else "N/A"
 f_pe_str = f"{f_pe:.1f}x" if f_pe else "N/A"
 
-# 頂部個股 / 指數行情卡
 st.markdown(f"""
 <div class="oled-header">
     <div class="oled-title">
@@ -553,7 +530,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 財報處理
 common_cols = [c for c in inc.columns if c in bs.columns and c in cf.columns]
 common_cols.sort()
 c_inc, c_bs, c_cf = inc[common_cols], bs[common_cols], cf[common_cols]
@@ -579,13 +555,9 @@ tab_analytics, tab_fundamentals, tab_valuation, tab_peers_news = st.tabs([
     T["tab_peers_news"]
 ])
 
-# --------------------------------------------------------------------------
-# TAB 1: 即時行情與分析 (TradingView 官方圖表)
-# --------------------------------------------------------------------------
 with tab_analytics:
     st.markdown(f"<div class='oled-section-title'>{T['tv_title']}</div>", unsafe_allow_html=True)
     
-    # 嚴謹映射 TradingView 原生代碼
     if ticker in ["^TWII", "TAIEX", "IX0001"]:
         tv_symbol = "TWSE:TAIEX"
     elif ticker in ["^NDX", "NDX", "QQQ"]:
@@ -635,7 +607,6 @@ with tab_analytics:
     """
     components.html(tv_widget_html, height=490)
 
-    # 分析師目標價扇形圖
     st.markdown(f"<div class='oled-section-title'>{T['target_12m']}</div>", unsafe_allow_html=True)
     t_mean = info.get("targetMeanPrice")
     t_high = info.get("targetHighPrice")
@@ -739,9 +710,6 @@ with tab_analytics:
             ]
             st.dataframe(pd.DataFrame(upgrades_list), use_container_width=True, hide_index=True)
 
-# --------------------------------------------------------------------------
-# TAB 2: 深度基本面
-# --------------------------------------------------------------------------
 with tab_fundamentals:
     st.markdown(f"<div class='oled-section-title'>{T['audit_title']}</div>", unsafe_allow_html=True)
     st.markdown(f"<div style='color:{pure_green}; font-size:0.85rem; padding: 6px 0; font-family:monospace;'>{T['audit_pass']}</div>", unsafe_allow_html=True)
@@ -809,9 +777,6 @@ with tab_fundamentals:
     else:
         st.info("此標的為宏觀指數或 ETF，不適用個別公司三大財報分析。請參閱第一分頁之即時走勢與技術指標。")
 
-# --------------------------------------------------------------------------
-# TAB 3: 估值與營運週期
-# --------------------------------------------------------------------------
 with tab_valuation:
     if not is_index and not inc.empty and not bs.empty:
         col_v1, col_v2 = st.columns(2)
@@ -884,9 +849,6 @@ with tab_valuation:
     else:
         st.info("宏觀指數或 ETF 無獨立營運資金與自由現金流，不適用逆向 DCF 模型。")
 
-# --------------------------------------------------------------------------
-# TAB 4: 同業與新聞
-# --------------------------------------------------------------------------
 with tab_peers_news:
     st.markdown(f"<div class='oled-section-title'>{T['peers_title']}</div>", unsafe_allow_html=True)
     default_peers = ["NVDA", "AMD", "AVGO", "2330.TW"] if ticker in ["NVDA", "^TWII", "^NDX", "^GSPC", "^SOX"] else [ticker, "AAPL", "MSFT", "GOOGL"]
@@ -927,7 +889,8 @@ with tab_peers_news:
                 roe_col: (p_ni / p_eq) * 100 if (pd.notna(p_eq) and p_eq > 0) else np.nan,
                 pe_col: p_inf.get("forwardPE", np.nan)
             })
-        except Exception: continue
+        except Exception:
+            continue
 
     if peer_records:
         pdf = pd.DataFrame(peer_records).set_index(t_col)
