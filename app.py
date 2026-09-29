@@ -690,17 +690,90 @@ if pipeline_mode == T["p_equity"]:
                 last_dt = chart_1y.index[-1]
                 future_dt = last_dt + pd.DateOffset(years=1)
 
+                lbl_high = "最高" if lang == "zh" else "High"
+                lbl_mean = "平均" if lang == "zh" else "Mean"
+                lbl_low = "最低" if lang == "zh" else "Low"
+                lbl_curr = "目前" if lang == "zh" else "Current"
+
                 fig_cone = go.Figure()
-                fig_cone.add_trace(go.Scatter(x=chart_1y.index, y=chart_1y['Close'], mode='lines', name=T['hist_trend'], line=dict(color="#eaecef", width=1.8)))
-                fig_cone.add_trace(go.Scatter(x=[last_dt, future_dt], y=[current_price, t_high], mode='lines', name=T['t_high'], line=dict(color="#00c087", width=1.5, dash="dot")))
-                fig_cone.add_trace(go.Scatter(x=[last_dt, future_dt], y=[current_price, t_low], mode='lines', name=T['t_low'], line=dict(color="#f6465d", width=1.5, dash="dot"), fill='tonexty', fillcolor='rgba(240, 185, 11, 0.08)'))
-                fig_cone.add_trace(go.Scatter(x=[last_dt, future_dt], y=[current_price, t_mean], mode='lines+markers', name=T['t_mean_lbl'], line=dict(color="#f0b90b", width=2.5, dash="dash")))
-                fig_cone.add_trace(go.Scatter(x=[last_dt], y=[current_price], mode='markers+text', name=T['curr_price_lbl'], text=[f"{curr_sym}{current_price:.1f}"], textposition="bottom left", marker=dict(color="#f0b90b", size=8)))
+                # 1. 過去 1 年歷史走勢
+                fig_cone.add_trace(go.Scatter(
+                    x=chart_1y.index, y=chart_1y['Close'],
+                    mode='lines', name=T['hist_trend'],
+                    line=dict(color="#eaecef", width=1.8),
+                    hoverinfo='skip'
+                ))
+                # 2. 最高目標線
+                fig_cone.add_trace(go.Scatter(
+                    x=[last_dt, future_dt], y=[current_price, t_high],
+                    mode='lines', name=T['t_high'],
+                    line=dict(color="rgba(0, 192, 135, 0.4)", width=1.2, dash="dot"),
+                    hoverinfo='skip'
+                ))
+                # 3. 最低目標線 (與最高構成預測區間陰影)
+                fig_cone.add_trace(go.Scatter(
+                    x=[last_dt, future_dt], y=[current_price, t_low],
+                    mode='lines', name=T['t_low'],
+                    line=dict(color="rgba(246, 70, 93, 0.4)", width=1.2, dash="dot"),
+                    fill='tonexty', fillcolor='rgba(240, 185, 11, 0.06)',
+                    hoverinfo='skip'
+                ))
+                # 4. 平均目標線
+                fig_cone.add_trace(go.Scatter(
+                    x=[last_dt, future_dt], y=[current_price, t_mean],
+                    mode='lines', name=T['t_mean_lbl'],
+                    line=dict(color="#f0b90b", width=2.0, dash="dash"),
+                    hoverinfo='skip'
+                ))
+                # 5. 當前現價定位錨點
+                fig_cone.add_trace(go.Scatter(
+                    x=[last_dt], y=[current_price],
+                    mode='markers', name=T['curr_price_lbl'],
+                    marker=dict(color="#ffffff", size=6, line=dict(color="#181a20", width=2)),
+                    hoverinfo='skip'
+                ))
+
+                # 6. 右側三大膠囊色塊標籤 (最高 / 平均 / 最低) + 目前現價標籤
                 fig_cone.update_layout(
-                    template="plotly_dark", height=260, margin=dict(l=5, r=5, t=10, b=10),
+                    annotations=[
+                        # 最高標籤 (綠色色塊)
+                        dict(
+                            x=future_dt, y=t_high, xref="x", yref="y",
+                            text=f"<b>{lbl_high} {curr_sym}{t_high:,.2f}</b>",
+                            showarrow=False, xanchor="left",
+                            bgcolor="#00c087", font=dict(color="#ffffff", size=11, family="sans-serif"),
+                            borderpad=5, bordercolor="#00c087", borderwidth=1
+                        ),
+                        # 平均標籤 (青綠深色塊)
+                        dict(
+                            x=future_dt, y=t_mean, xref="x", yref="y",
+                            text=f"<b>{lbl_mean} {curr_sym}{t_mean:,.2f}</b>",
+                            showarrow=False, xanchor="left",
+                            bgcolor="#008060", font=dict(color="#ffffff", size=11, family="sans-serif"),
+                            borderpad=5, bordercolor="#008060", borderwidth=1
+                        ),
+                        # 最低標籤 (紅色色塊)
+                        dict(
+                            x=future_dt, y=t_low, xref="x", yref="y",
+                            text=f"<b>{lbl_low} {curr_sym}{t_low:,.2f}</b>",
+                            showarrow=False, xanchor="left",
+                            bgcolor="#f6465d", font=dict(color="#ffffff", size=11, family="sans-serif"),
+                            borderpad=5, bordercolor="#f6465d", borderwidth=1
+                        ),
+                        # 現價標籤
+                        dict(
+                            x=last_dt, y=current_price, xref="x", yref="y",
+                            text=f"<b>{lbl_curr}</b><br>{curr_sym}{current_price:,.2f}",
+                            showarrow=True, arrowhead=0, arrowcolor="#848e9c",
+                            ax=0, ay=35, font=dict(color="#eaecef", size=10, family="monospace")
+                        )
+                    ],
+                    template="plotly_dark", height=280,
+                    margin=dict(l=10, r=130, t=20, b=35), # r 擴大到 130 確保膠囊標籤不被裁切
                     paper_bgcolor="#181a20", plot_bgcolor="#181a20",
-                    xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor="#262932", side="right"),
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.28, xanchor="center", x=0.5)
+                    xaxis=dict(showgrid=False, showticklabels=True),
+                    yaxis=dict(showgrid=True, gridcolor="#262932", side="left", showticklabels=True),
+                    showlegend=False
                 )
                 st.plotly_chart(fig_cone, use_container_width=True, config={'displayModeBar': False})
 
