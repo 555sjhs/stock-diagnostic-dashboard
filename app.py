@@ -349,12 +349,12 @@ def load_equity_data(sym):
 
 # 市場摘要指數數據（台股加權、那指100、標普500、費半）
 @st.cache_data(ttl=120)
-def get_market_overview():
+def get_market_overview(lang="zh"):
     indices = [
-        {"name": "TSEC加權", "sub": "IX0001", "ticker": "^TWII"},
-        {"name": "那斯達克 100", "sub": "NDX", "ticker": "QQQ"},
-        {"name": "標普 500", "sub": "SPX", "ticker": "SPY"},
-        {"name": "費城半導體", "sub": "SOX", "ticker": "SOXX"}
+        {"name": "TSEC加權" if lang == "zh" else "TAIEX", "sub": "IX0001", "ticker": "^TWII"},
+        {"name": "那斯達克 100" if lang == "zh" else "Nasdaq 100", "sub": "NDX", "ticker": "QQQ"},
+        {"name": "標普 500" if lang == "zh" else "S&P 500", "sub": "SPX", "ticker": "SPY"},
+        {"name": "費城半導體" if lang == "zh" else "PHLX Semi", "sub": "SOX", "ticker": "SOXX"}
     ]
     res = []
     for item in indices:
@@ -455,7 +455,7 @@ ticker = normalize_ticker(search_input)
 # ==========================================
 st.markdown(f"<div class='market-section-title'>{T['market_summary']} &rsaquo;</div>", unsafe_allow_html=True)
 
-m_data = get_market_overview()
+m_data = get_market_overview(lang=st.session_state.lang)
 if m_data:
     cols = st.columns(len(m_data))
     for i, m in enumerate(m_data):
