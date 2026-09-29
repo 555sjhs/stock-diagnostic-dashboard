@@ -566,24 +566,31 @@ tab_analytics, tab_fundamentals, tab_valuation, tab_peers_news = st.tabs([
 with tab_analytics:
     st.markdown(f"<div class='oled-section-title'>{T['tv_title']}</div>", unsafe_allow_html=True)
     
-    if ticker in ["^TWII", "TAIEX", "IX0001"]:
+    clean_sym = ticker.replace("^", "").strip().upper()
+    
+    # 1. 宏觀指數精確映射為開放組件內嵌之代表標的
+    if clean_sym in ["TWII", "TAIEX", "IX0001"] or "TWII" in clean_sym:
         tv_symbol = "TWSE:0050"
-    elif ticker in ["^NDX", "NDX", "QQQ"]:
+    elif clean_sym in ["NDX", "QQQ"]:
         tv_symbol = "NASDAQ:QQQ"
-    elif ticker in ["^GSPC", "SPX", "SPY"]:
+    elif clean_sym in ["GSPC", "SPX", "SPY", "INX"]:
         tv_symbol = "AMEX:SPY"
-    elif ticker in ["^SOX", "SOX", "SOXX"]:
+    elif clean_sym in ["SOX", "SOXX"]:
         tv_symbol = "NASDAQ:SOXX"
-    elif ticker.endswith(".TW"):
-        tv_symbol = f"TWSE:{ticker.replace('.TW', '')}"
+    # 2. 台股個股與 ETF
+    elif ticker.endswith(".TW") or (ticker.isdigit() and len(ticker) in [4, 5]):
+        t_id = ticker.replace(".TW", "")
+        tv_symbol = f"TWSE:{t_id}"
     elif ticker.endswith(".TWO"):
-        tv_symbol = f"TPEX:{ticker.replace('.TWO', '')}"
-    elif ticker in ["SPY", "VOO", "IVV"]:
-        tv_symbol = f"AMEX:{ticker}"
-    elif ticker in ["SOXX", "QQQ", "NVDA", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA", "NFLX", "AMD", "AVGO", "INTC", "MU"]:
-        tv_symbol = f"NASDAQ:{ticker}"
+        t_id = ticker.replace(".TWO", "")
+        tv_symbol = f"TPEX:{t_id}"
+    # 3. 美股美交所與熱門科技股
+    elif clean_sym in ["SPY", "VOO", "IVV", "VTI", "VT"]:
+        tv_symbol = f"AMEX:{clean_sym}"
+    elif clean_sym in ["SOXX", "QQQ", "NVDA", "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "TSLA", "NFLX", "AMD", "AVGO", "INTC", "MU", "SMH"]:
+        tv_symbol = f"NASDAQ:{clean_sym}"
     else:
-        tv_symbol = f"NYSE:{ticker}"
+        tv_symbol = f"NYSE:{clean_sym}"
 
     tv_locale = "zh_TW" if curr_lang == "zh" else "en"
     tv_widget_html = f"""
