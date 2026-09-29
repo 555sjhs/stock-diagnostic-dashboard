@@ -889,100 +889,138 @@ with tab_valuation:
 with tab_peers_news:
     st.markdown(f"<div class='oled-section-title'>{T['peers_title']}</div>", unsafe_allow_html=True)
     
-    # 動的競合マッピング（対象銘柄の業界に応じた競合設定）
-    peer_mapping = {
-        "NFLX": ["NFLX", "DIS", "WBD", "CMCSA", "AMZN"],
-        "NVDA": ["NVDA", "AMD", "AVGO", "QCOM", "2330.TW"],
-        "AMD": ["AMD", "NVDA", "INTC", "QCOM", "AVGO"],
-        "AAPL": ["AAPL", "MSFT", "GOOGL", "AMZN", "META"],
-        "MSFT": ["MSFT", "GOOGL", "AMZN", "ORCL", "AAPL"],
-        "TSLA": ["TSLA", "RIVN", "LCID", "BYDDF", "GM"],
-        "2330.TW": ["2330.TW", "NVDA", "INTC", "2454.TW", "ASML"]
-    }
-    
-    clean_curr = ticker.replace("^", "").strip().upper()
-    if clean_curr in peer_mapping:
-        default_peers = peer_mapping[clean_curr]
-    elif ticker in peer_mapping:
-        default_peers = peer_mapping[ticker]
-    else:
-        default_peers = [ticker, "NVDA", "AAPL", "MSFT", "GOOGL"]
-    
-    peer_records = []
-    for p_sym in default_peers:
-        try:
-            ps = yf.Ticker(p_sym)
-            p_inf = ps.info
-            p_fast = dict(ps.fast_info)
-            p_curr = p_inf.get("currency") or ("TWD" if ".TW" in p_sym else "USD")
-            
-            # 正確なUSD時価総額計算
-            raw_mcap = p_fast.get("marketCap") or p_inf.get("marketCap", 0)
-            if p_curr == "TWD":
-                mcap_usd_val = (raw_mcap / USD_TWD) / 1e9 if raw_mcap else np.nan
-            else:
-                mcap_usd_val = raw_mcap / 1e9 if raw_mcap else np.nan
-            
-            # TTM財務指標（マージンおよびROE）
-            gm_val = p_inf.get("grossMargins")
-            gm_val = gm_val * 100 if gm_val is not None else np.nan
-            
-            om_val = p_inf.get("operatingMargins")
-            om_val = om_val * 100 if om_val is not None else np.nan
-            
-            roe_val = p_inf.get("returnOnEquity")
-            roe_val = roe_val * 100 if roe_val is not None else np.nan
-            
-            fwd_pe = p_inf.get("forwardPE")
-            
-            # FCF / 純利益比率
-            fcf_ni_val = np.nan
+    # 判斷是否為 ETF 或指數
+    etf_symbols = ["0050", "0056", "006208", "00878", "00919", "00929", "SPY", "QQQ", "SOXX", "VOO", "IVV", "VTI", "VT", "SMH"]
+    is_curr_etf = any(ticker.startswith(e) for e in etf_symbols) or ticker.startswith("^")
+
+    if is_curr_etf:
+        # ETF 對比清單 (台股 ETF 比台股主流 ETF，美股比美股主流大盤 ETF)
+        if ".TW" in ticker or ticker in ["0050", "0056", "006208", "00878", "00919"]:
+            peer_etfs = ["0050.TW", "006208.TW", "0056.TW", "00878.TW", "00919.TW"]
+        else:
+            peer_etfs = ["SPY", "QQQ", "VOO", "SOXX", "VTI"]
+
+        etf_records = []
+        for e_sym in peer_etfs:
             try:
-                cf_df = ps.cashflow
-                inc_df = ps.financials
-                if not cf_df.empty and not inc_df.empty:
-                    cfo_val = safe_extract(cf_df, ["Operating Cash Flow", "OperatingCashFlow"]).iloc[0]
-                    cap_val = safe_extract(cf_df, ["Capital Expenditure", "CapitalExpenditure"]).abs().iloc[0]
-                    ni_val = safe_extract(inc_df, ["Net Income", "NetIncome"]).iloc[0]
-                    if pd.notna(cfo_val) and pd.notna(cap_val) and pd.notna(ni_val) and ni_val > 0:
-                        fcf_ni_val = (cfo_val - cap_val) / ni_val
+                et = yf.Ticker(e_sym)
+                e_inf = et.info
+                e_fast = dict(et.fast_info)
+                p_cur = e_fast.get("lastPrice") or e_inf.get("previousClose") or e_inf.get("navPrice", 0.0)
+                aum = e_inf.get("totalAssets", 0) or 0
+                
+                # 美元統一計價 AUM (B)
+                is_tw_etf = ".TW" in e_sym
+                aum_usd_b = (aum / USD_TWD / 1e9) if is_tw_etf else (aum / 1e9)
+                exp_ratio = e_inf.get("annualReportExpenseRatio", 0.0)
+                div_yield = e_inf.get("yield", 0.0) or e_inf.get("trailingAnnualDividendYield", 0.0)
+                
+                t_lbl = "代碼" if curr_lang == "zh" else "Ticker"
+                p_lbl = "市價" if curr_lang == "zh" else "Price"
+                a_lbl = "資產規模 ($B USD)" if curr_lang == "zh" else "AUM ($B USD)"
+                e_lbl = "總費用率 (%)" if curr_lang == "zh" else "Expense Ratio"
+                y_lbl = "殖利率 (%)" if curr_lang == "zh" else "Yield (%)"
+                
+                etf_records.append({
+                    t_lbl: f"[TARGET] {e_sym}" if (e_sym == ticker or e_sym.replace(".TW","") == ticker) else e_sym,
+                    p_lbl: f"{p_cur:,.2f}",
+                    a_lbl: f"${aum_usd_b:,.2f} B" if aum_usd_b > 0 else "-",
+                    e_lbl: f"{exp_ratio*100:.2f}%" if exp_ratio else "0.20% ~ 0.40%",
+                    y_lbl: f"{div_yield*100:.2f}%" if div_yield else "-"
+                })
             except Exception:
-                pass
-            
-            t_col = "Ticker" if curr_lang == "en" else "代碼"
-            c_col = "Currency" if curr_lang == "en" else "幣別"
-            m_col = "Mcap ($B USD)" if curr_lang == "en" else "統一市值 ($B USD)"
-            gm_col = "Gross Margin %" if curr_lang == "en" else "毛利率 (%)"
-            om_col = "Operating Margin %" if curr_lang == "en" else "營業利益率 (%)"
-            fcf_col = "FCF/NI Ratio" if curr_lang == "en" else "FCF/淨利轉換率"
-            roe_col = "ROE %" if curr_lang == "en" else "ROE (%)"
-            pe_col = "Forward P/E" if curr_lang == "en" else "前瞻 P/E"
-
-            peer_records.append({
-                t_col: f"[TARGET] {p_sym}" if p_sym == ticker else p_sym,
-                c_col: p_curr,
-                m_col: mcap_usd_val,
-                gm_col: gm_val,
-                om_col: om_val,
-                fcf_col: fcf_ni_val,
-                roe_col: roe_val,
-                pe_col: fwd_pe
-            })
-        except Exception:
-            continue
-
-    if peer_records:
-        pdf = pd.DataFrame(peer_records).set_index(t_col)
-        fmt = {
-            m_col: "${:,.1f} B",
-            gm_col: "{:.2f}%",
-            om_col: "{:.2f}%",
-            fcf_col: "{:.2f}x",
-            roe_col: "{:.2f}%",
-            pe_col: "{:.1f}x"
+                continue
+        if etf_records:
+            st.dataframe(pd.DataFrame(etf_records).set_index(list(etf_records[0].keys())[0]), use_container_width=True)
+    else:
+        # 個股智能產業對標清單
+        peer_mapping = {
+            "NFLX": ["NFLX", "DIS", "WBD", "CMCSA", "AMZN"],
+            "NVDA": ["NVDA", "AMD", "AVGO", "QCOM", "2330.TW"],
+            "AMD": ["AMD", "NVDA", "INTC", "QCOM", "AVGO"],
+            "AAPL": ["AAPL", "MSFT", "GOOGL", "AMZN", "META"],
+            "MSFT": ["MSFT", "GOOGL", "AMZN", "ORCL", "AAPL"],
+            "TSLA": ["TSLA", "RIVN", "LCID", "BYDDF", "GM"],
+            "2330.TW": ["2330.TW", "NVDA", "INTC", "2454.TW", "ASML"]
         }
-        st.dataframe(pdf.style.format(fmt, na_rep="-"), use_container_width=True)
-    
+        clean_curr = ticker.replace("^", "").strip().upper()
+        default_peers = peer_mapping.get(clean_curr, peer_mapping.get(ticker, [ticker, "NVDA", "AAPL", "MSFT", "GOOGL"]))
+
+        peer_records = []
+        for p_sym in default_peers:
+            try:
+                ps = yf.Ticker(p_sym)
+                p_inf = ps.info
+                p_fast = dict(ps.fast_info)
+                p_curr = p_inf.get("currency") or ("TWD" if ".TW" in p_sym else "USD")
+
+                # 正確美元市值計算
+                raw_mcap = p_fast.get("marketCap") or p_inf.get("marketCap", 0)
+                if p_curr == "TWD":
+                    mcap_usd = (raw_mcap / USD_TWD) / 1e9 if raw_mcap else np.nan
+                else:
+                    mcap_usd = (raw_mcap / 1e9) if raw_mcap else np.nan
+
+                # 比率抓取官方最新 TTM 數據 (避免 iloc[0] 取到多年舊帳)
+                gm_val = p_inf.get("grossMargins")
+                gm_val = gm_val * 100 if gm_val is not None else np.nan
+                
+                om_val = p_inf.get("operatingMargins")
+                om_val = om_val * 100 if om_val is not None else np.nan
+
+                roe_val = p_inf.get("returnOnEquity")
+                roe_val = roe_val * 100 if roe_val is not None else np.nan
+
+                fwd_pe = p_inf.get("forwardPE", np.nan)
+
+                # FCF/NI
+                fcf_ni = np.nan
+                try:
+                    cf_df = ps.cashflow
+                    inc_df = ps.financials
+                    if not cf_df.empty and not inc_df.empty:
+                        cfo = safe_extract(cf_df, ["Operating Cash Flow", "OperatingCashFlow"]).iloc[0]
+                        cap = safe_extract(cf_df, ["Capital Expenditure", "CapitalExpenditure"]).abs().iloc[0]
+                        ni = safe_extract(inc_df, ["Net Income", "NetIncome"]).iloc[0]
+                        if pd.notna(cfo) and pd.notna(cap) and pd.notna(ni) and ni > 0:
+                            fcf_ni = (cfo - cap) / ni
+                except Exception:
+                    pass
+
+                t_col = "Ticker" if curr_lang == "en" else "代碼"
+                c_col = "Currency" if curr_lang == "en" else "幣別"
+                m_col = "Mcap ($B USD)" if curr_lang == "en" else "統一市值 ($B USD)"
+                gm_col = "Gross Margin %" if curr_lang == "en" else "毛利率 (%)"
+                om_col = "Operating Margin %" if curr_lang == "en" else "營業利益率 (%)"
+                fcf_col = "FCF/NI Ratio" if curr_lang == "en" else "FCF/淨利轉換率"
+                roe_col = "ROE %" if curr_lang == "en" else "ROE (%)"
+                pe_col = "Forward P/E" if curr_lang == "en" else "前瞻 P/E"
+
+                peer_records.append({
+                    t_col: f"[TARGET] {p_sym}" if p_sym == ticker else p_sym,
+                    c_col: p_curr,
+                    m_col: mcap_usd,
+                    gm_col: gm_val,
+                    om_col: om_val,
+                    fcf_col: fcf_ni,
+                    roe_col: roe_val,
+                    pe_col: fwd_pe
+                })
+            except Exception:
+                continue
+
+        if peer_records:
+            pdf = pd.DataFrame(peer_records).set_index(t_col)
+            fmt = {
+                m_col: "${:,.1f} B",
+                gm_col: "{:.2f}%",
+                om_col: "{:.2f}%",
+                fcf_col: "{:.2f}x",
+                roe_col: "{:.2f}%",
+                pe_col: "{:.1f}x"
+            }
+            st.dataframe(pdf.style.format(fmt, na_rep="-"), use_container_width=True)
+
     st.markdown(f"<div class='oled-section-title'>{T['news_title']}</div>", unsafe_allow_html=True)
     live_news = [
         {"ticker": ticker, "title": f"{ticker} 即時盤勢走勢與機構流向監測", "link": f"https://finance.yahoo.com/quote/{ticker}", "publisher": "Reuters Wire", "time_str": "即時"},
