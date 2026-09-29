@@ -716,7 +716,7 @@ if pipeline_mode == "企業個股深度診斷迴路":
                 nm_vals.append(nm); at_vals.append(at); em_vals.append(em); roe_vals.append(roe)
 
             dupont_df = pd.DataFrame({"ROE %": roe_vals, "淨利率 %": nm_vals, "週轉率": at_vals, "槓桿倍數": em_vals}, index=years).T
-            st.dataframe(dupont_df.applymap(lambda v: f"{v:.2f}" if pd.notna(v) else "-"), use_container_width=True)
+            st.dataframe(dupont_df.map(lambda v: f"{v:.2f}" if pd.notna(v) else "-"), use_container_width=True)
 
         c_cf1, c_cf2 = st.columns(2)
         with c_cf1:
