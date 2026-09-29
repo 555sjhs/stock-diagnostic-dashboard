@@ -566,61 +566,87 @@ tab_analytics, tab_fundamentals, tab_valuation, tab_peers_news = st.tabs([
 with tab_analytics:
     st.markdown(f"<div class='oled-section-title'>{T['tv_title']}</div>", unsafe_allow_html=True)
     
-    clean_sym = ticker.replace("^", "").strip().upper()
-    
-    # 1. 宏觀指數精確映射為開放組件內嵌之代表標的
-    if clean_sym in ["TWII", "TAIEX", "IX0001"] or "TWII" in clean_sym:
-        tv_symbol = "TWSE:0050"
-    elif clean_sym in ["NDX", "QQQ"]:
-        tv_symbol = "NASDAQ:QQQ"
-    elif clean_sym in ["GSPC", "SPX", "SPY", "INX"]:
-        tv_symbol = "AMEX:SPY"
-    elif clean_sym in ["SOX", "SOXX"]:
-        tv_symbol = "NASDAQ:SOXX"
-    # 2. 台股個股與 ETF
-    elif ticker.endswith(".TW") or (ticker.isdigit() and len(ticker) in [4, 5]):
-        t_id = ticker.replace(".TW", "")
-        tv_symbol = f"TWSE:{t_id}"
-    elif ticker.endswith(".TWO"):
-        t_id = ticker.replace(".TWO", "")
-        tv_symbol = f"TPEX:{t_id}"
-    # 3. 美股美交所與熱門科技股
-    elif clean_sym in ["SPY", "VOO", "IVV", "VTI", "VT"]:
-        tv_symbol = f"AMEX:{clean_sym}"
-    elif clean_sym in ["SOXX", "QQQ", "NVDA", "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "TSLA", "NFLX", "AMD", "AVGO", "INTC", "MU", "SMH"]:
-        tv_symbol = f"NASDAQ:{clean_sym}"
-    else:
-        tv_symbol = f"NYSE:{clean_sym}"
+    # 判斷是否為指數或 ETF
+    etf_tickers = ["0050", "0056", "006208", "00878", "00919", "00929", "SPY", "QQQ", "SOXX", "VOO", "IVV", "VTI", "VT", "SMH"]
+    is_etf_or_index = is_index or any(ticker.startswith(e) for e in etf_tickers)
 
-    tv_locale = "zh_TW" if curr_lang == "zh" else "en"
-    tv_widget_html = f"""
-    <div class="tradingview-widget-container" style="height:480px; width:100%; background:#000000;">
-      <div id="tradingview_chart" style="height:calc(100% - 32px); width:100%;"></div>
-      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-      <script type="text/javascript">
-      new TradingView.widget(
-      {{
-        "autosize": true,
-        "symbol": "{tv_symbol}",
-        "interval": "D",
-        "timezone": "Asia/Taipei",
-        "theme": "dark",
-        "style": "1",
-        "locale": "{tv_locale}",
-        "toolbar_bg": "#000000",
-        "enable_publishing": false,
-        "hide_top_toolbar": false,
-        "hide_legend": false,
-        "save_image": false,
-        "backgroundColor": "#000000",
-        "gridColor": "#141418",
-        "container_id": "tradingview_chart"
-      }}
-      );
-      </script>
-    </div>
-    """
-    components.html(tv_widget_html, height=490)
+    if is_etf_or_index:
+        # 指數與 ETF 採用 Yahoo Finance 原生資料自繪互動 K 線圖
+        if not chart_1y.empty:
+            df_k = chart_1y.copy()
+            df_k["MA20"] = df_k["Close"].rolling(20).mean()
+            df_k["MA60"] = df_k["Close"].rolling(60).mean()
+            
+            fig_yf = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.75, 0.25])
+            fig_yf.add_trace(go.Candlestick(
+                x=df_k.index,
+                open=df_k["Open"], high=df_k["High"], low=df_k["Low"], close=df_k["Close"],
+                name="K線",
+                increasing_line_color="#00e676", decreasing_line_color="#ff1744"
+            ), row=1, col=1)
+            
+            fig_yf.add_trace(go.Scatter(x=df_k.index, y=df_k["MA20"], mode="lines", name="月線 (MA20)", line=dict(color="#f59e0b", width=1.2)), row=1, col=1)
+            fig_yf.add_trace(go.Scatter(x=df_k.index, y=df_k["MA60"], mode="lines", name="季線 (MA60)", line=dict(color="#3b82f6", width=1.2)), row=1, col=1)
+            
+            colors_vol = ["#00e676" if c >= o else "#ff1744" for c, o in zip(df_k["Close"], df_k["Open"])]
+            fig_yf.add_trace(go.Bar(x=df_k.index, y=df_k["Volume"], name="成交量", marker_color=colors_vol), row=2, col=1)
+            
+            fig_yf.update_layout(
+                template="plotly_dark",
+                height=480,
+                margin=dict(l=10, r=20, t=10, b=10),
+                paper_bgcolor="#08080a",
+                plot_bgcolor="#08080a",
+                xaxis=dict(rangeslider=dict(visible=False), showgrid=False),
+                xaxis2=dict(showgrid=False),
+                yaxis=dict(gridcolor="#141418", side="right"),
+                yaxis2=dict(gridcolor="#141418", side="right"),
+                legend=dict(orientation="h", y=1.05, x=0)
+            )
+            st.plotly_chart(fig_yf, use_container_width=True, config={"displayModeBar": False})
+        else:
+            st.info("暫無即時 K 線行情數據。")
+    else:
+        # 一般個股載入 TradingView 專業技術分析組件
+        clean_sym = ticker.replace("^", "").strip().upper()
+        if ticker.endswith(".TW") or (ticker.isdigit() and len(ticker) in [4, 5]):
+            tv_symbol = f"TWSE:{ticker.replace('.TW', '')}"
+        elif ticker.endswith(".TWO"):
+            tv_symbol = f"TPEX:{ticker.replace('.TWO', '')}"
+        elif clean_sym in ["NVDA", "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "TSLA", "NFLX", "AMD", "AVGO", "INTC", "MU"]:
+            tv_symbol = f"NASDAQ:{clean_sym}"
+        else:
+            tv_symbol = f"NYSE:{clean_sym}"
+
+        tv_locale = "zh_TW" if curr_lang == "zh" else "en"
+        tv_widget_html = f"""
+        <div class="tradingview-widget-container" style="height:480px; width:100%; background:#000000;">
+          <div id="tradingview_chart" style="height:calc(100% - 32px); width:100%;"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+          <script type="text/javascript">
+          new TradingView.widget(
+          {{
+            "autosize": true,
+            "symbol": "{tv_symbol}",
+            "interval": "D",
+            "timezone": "Asia/Taipei",
+            "theme": "dark",
+            "style": "1",
+            "locale": "{tv_locale}",
+            "toolbar_bg": "#000000",
+            "enable_publishing": false,
+            "hide_top_toolbar": false,
+            "hide_legend": false,
+            "save_image": false,
+            "backgroundColor": "#000000",
+            "gridColor": "#141418",
+            "container_id": "tradingview_chart"
+          }}
+          );
+          </script>
+        </div>
+        """
+        components.html(tv_widget_html, height=490)
 
     st.markdown(f"<div class='oled-section-title'>{T['target_12m']}</div>", unsafe_allow_html=True)
     t_mean = info.get("targetMeanPrice")
