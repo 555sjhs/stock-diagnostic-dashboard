@@ -352,9 +352,9 @@ def load_equity_data(sym):
 def get_market_overview(lang="zh"):
     indices = [
         {"name": "TSEC加權" if lang == "zh" else "TAIEX", "sub": "IX0001", "ticker": "^TWII"},
-        {"name": "那斯達克 100" if lang == "zh" else "Nasdaq 100", "sub": "NDX", "ticker": "QQQ"},
-        {"name": "標普 500" if lang == "zh" else "S&P 500", "sub": "SPX", "ticker": "SPY"},
-        {"name": "費城半導體" if lang == "zh" else "PHLX Semi", "sub": "SOX", "ticker": "SOXX"}
+        {"name": "那斯達克 100" if lang == "zh" else "Nasdaq 100", "sub": "NDX", "ticker": "^NDX"},
+        {"name": "標普 500" if lang == "zh" else "S&P 500", "sub": "SPX", "ticker": "^GSPC"},
+        {"name": "費城半導體" if lang == "zh" else "PHLX Semi", "sub": "SOX", "ticker": "^SOX"}
     ]
     res = []
     for item in indices:
@@ -635,12 +635,25 @@ tab_analytics, tab_fundamentals, tab_valuation, tab_peers_news = st.tabs([
 with tab_analytics:
     st.markdown(f"<div class='oled-section-title'>{T['tv_title']}</div>", unsafe_allow_html=True)
     
-    if ticker.endswith(".TW"):
-        tv_symbol = f"TWSE:{ticker.replace('.TW', '')}"
-    elif ticker.endswith(".TWO"):
-        tv_symbol = f"TPEX:{ticker.replace('.TWO', '')}"
-    else:
-        tv_symbol = f"NASDAQ:{ticker}" if ticker in ["NVDA", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA", "NFLX", "AMD", "AVGO", "INTC", "MU", "QQQ"] else f"NYSE:{ticker}"
+    # 嚴謹映射 TradingView 官方原生代碼
+        if ticker in ["^TWII", "TAIEX", "IX0001"]:
+            tv_symbol = "TWSE:TAIEX"
+        elif ticker in ["^NDX", "NDX", "QQQ"]:
+            tv_symbol = "NASDAQ:NDX"
+        elif ticker in ["^GSPC", "SPX", "SPY"]:
+            tv_symbol = "SP:SPX"
+        elif ticker in ["^SOX", "SOX", "SOXX"]:
+            tv_symbol = "INDEX:SOX"
+        elif ticker.endswith(".TW"):
+            tv_symbol = f"TWSE:{ticker.replace('.TW', '')}"
+        elif ticker.endswith(".TWO"):
+            tv_symbol = f"TPEX:{ticker.replace('.TWO', '')}"
+        elif ticker in ["SPY", "VOO", "IVV"]:
+            tv_symbol = f"AMEX:{ticker}"
+        elif ticker in ["SOXX", "QQQ", "NVDA", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA", "NFLX", "AMD", "AVGO", "INTC", "MU"]:
+            tv_symbol = f"NASDAQ:{ticker}"
+        else:
+            tv_symbol = f"NYSE:{ticker}"
 
     tv_locale = "zh_TW" if st.session_state.lang == "zh" else "en"
     tv_widget_html = f"""
