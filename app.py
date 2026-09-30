@@ -600,10 +600,12 @@ with tab_analytics:
             tv_symbol = f"TWSE:{ticker.replace('.TW', '')}"
         elif ticker.endswith(".TWO"):
             tv_symbol = f"TPEX:{ticker.replace('.TWO', '')}"
-        elif clean_sym in ["NVDA", "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "TSLA", "NFLX", "AMD", "AVGO", "INTC", "MU"]:
+        elif clean_sym in ["SPCX", "NVDA", "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "TSLA", "NFLX", "AMD", "AVGO", "INTC", "MU", "PLTR", "ARM", "QCOM", "ASML", "COST"]:
             tv_symbol = f"NASDAQ:{clean_sym}"
         else:
-            tv_symbol = f"NYSE:{clean_sym}"
+            # 優先嘗試 NASDAQ，若為特定傳產/金融才走 NYSE
+            nyse_list = ["TSM", "WMT", "BRK.A", "BRK.B", "JPM", "V", "MA", "DIS", "NKE", "LMT", "BA", "RKLB"]
+            tv_symbol = f"NYSE:{clean_sym}" if clean_sym in nyse_list else f"NASDAQ:{clean_sym}"
 
         tv_locale = "zh_TW" if curr_lang == "zh" else "en"
         tv_widget_html = f"""
