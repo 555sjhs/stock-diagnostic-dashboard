@@ -556,10 +556,10 @@ tab_analytics, tab_fundamentals, tab_valuation, tab_peers_news = st.tabs([
 with tab_analytics:
     st.markdown(f"<div class='oled-section-title'>{T['tv_title']}</div>", unsafe_allow_html=True)
     
-    etf_keywords = ["0050", "0056", "006208", "00878", "00919", "00929", "SPY", "QQQ", "SOXX", "VOO", "IVV", "VTI", "VT", "SMH", "DIA", "IWM", "TAIEX"]
-    is_etf_or_index = is_index or ticker.startswith("^") or any(k in ticker.upper() for k in etf_keywords)
+    # 只有以 ^ 開頭的純大盤指數才退回 Plotly K線，其餘 ETF（SPY, QQQ, 0050 等）全面啟用 TradingView
+    is_pure_index = ticker.startswith("^")
 
-    if is_etf_or_index:
+    if is_pure_index:
         if not chart_1y.empty:
             df_k = chart_1y.copy()
             df_k["MA20"] = df_k["Close"].rolling(20).mean()
@@ -600,8 +600,10 @@ with tab_analytics:
             tv_symbol = f"TWSE:{ticker.replace('.TW', '')}"
         elif ticker.endswith(".TWO"):
             tv_symbol = f"TPEX:{ticker.replace('.TWO', '')}"
-        elif clean_sym == "SPCX":
-            tv_symbol = "NASDAQ:SPCX"
+        elif clean_sym == "SPY":
+            tv_symbol = "AMEX:SPY"
+        elif clean_sym in ["QQQ", "SOXX", "SMH", "SPCX", "NVDA", "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "TSLA", "NFLX", "AMD", "AVGO", "INTC", "MU"]:
+            tv_symbol = f"NASDAQ:{clean_sym}"
         elif clean_sym in ["TSM", "WMT", "BRK.A", "BRK.B", "JPM", "V", "MA", "DIS", "NKE", "LMT", "BA", "RKLB"]:
             tv_symbol = f"NYSE:{clean_sym}"
         else:
