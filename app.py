@@ -152,6 +152,44 @@ st.markdown("""
         border: 1px solid #16161b;
         border-radius: 4px;
     }
+
+    /* 手機端專屬響應式優化 (Mobile RWD) */
+    @media (max-width: 768px) {
+        .block-container {
+            padding-left: 0.8rem !important;
+            padding-right: 0.8rem !important;
+            padding-top: 1rem !important;
+        }
+        .oled-header {
+            gap: 12px !important;
+            padding: 10px 14px !important;
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+        .oled-title {
+            grid-column: span 2 !important;
+            border-right: none !important;
+            border-bottom: 1px solid #1a1a22 !important;
+            padding-bottom: 8px !important;
+            margin-bottom: 4px !important;
+        }
+        .oled-price {
+            font-size: 1.35rem !important;
+        }
+        .oled-metric-val {
+            font-size: 0.88rem !important;
+        }
+        .oled-metric-label {
+            font-size: 0.62rem !important;
+        }
+        .tradingview-widget-container {
+            height: 380px !important;
+        }
+        button[data-baseweb="tab"] {
+            font-size: 0.78rem !important;
+            padding: 8px 10px !important;
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
 
