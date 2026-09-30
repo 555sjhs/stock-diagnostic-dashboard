@@ -155,10 +155,45 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# 支援打字自動補全與模糊搜尋的資料庫
+INDEX_ITEMS = [
+    ("NVDA", "NVIDIA 輝達 (GPU/AI算力龍頭)"),
+    ("AAPL", "Apple 蘋果 (消費電子/iOS生態)"),
+    ("MSFT", "Microsoft 微軟 (Azure雲端/企業軟體)"),
+    ("GOOGL", "Alphabet 谷歌 (搜尋引擎/雲端運算)"),
+    ("AMZN", "Amazon 亞馬遜 (AWS雲端/電商巨頭)"),
+    ("META", "Meta 臉書 (社群巨頭/AI廣告)"),
+    ("TSLA", "Tesla 特斯拉 (電動車/自駕AI/機器人)"),
+    ("2330.TW", "台積電 TSMC (全球晶圓代工龍頭)"),
+    ("2454.TW", "聯發科 MediaTek (行動晶片設計龍頭)"),
+    ("2317.TW", "鴻海 Foxconn (電子代工/AI伺服器)"),
+    ("0050.TW", "元大台灣50 (台股大型龍頭ETF)"),
+    ("0056.TW", "元大高股息 (高息ETF)"),
+    ("00878.TW", "國泰永續高股息 (ESG高息ETF)"),
+    ("00919.TW", "群益台灣精選高息 (高配息ETF)"),
+    ("QQQ", "Invesco 那斯達克 100 指數 ETF"),
+    ("SPY", "SPDR 標普 500 指數 ETF"),
+    ("SOXX", "iShares 費城半導體 ETF"),
+    ("AVGO", "Broadcom 博通 (網通/客製化晶片ASIC)"),
+    ("AMD", "AMD 超微半導體 (AI GPU/伺服器CPU)"),
+    ("TSM", "台積電 ADR (美股上市存託憑證)"),
+    ("PLTR", "Palantir (AI企業大數據國防軟體)"),
+    ("ORCL", "Oracle 甲骨文 (資料庫/AI雲基礎設施)"),
+    ("CRM", "Salesforce (企業客戶關係管理雲)"),
+    ("WMT", "Walmart 沃爾瑪 (全球零售巨頭)"),
+    ("COST", "Costco 好市多 (會員制量販超市)"),
+    ("NFLX", "Netflix 網飛 (全球串流影視巨頭)"),
+    ("DIS", "Disney 迪士尼 (全球影視娛樂/主題樂園)"),
+    ("NKE", "Nike 耐吉 (運動休閒鞋服龍頭)"),
+    ("LULU", "Lululemon 露露樂檬 (運動瑜珈機能服飾)"),
+    ("DECK", "Deckers Outdoor (HOKA / UGG 跑鞋)"),
+    ("SKX", "Skechers 斯凱奇 (休閒健步鞋品牌)")
+]
+
 I18N = {
     "zh": {
         "market_summary": "市場摘要",
-        "search_ph": "搜尋商品、指數、代碼 (例 NVDA, AAPL, 2330, 0050)...",
+        "search_ph": "搜尋代碼、公司名稱 (例 NVDA, 台積電, 0050, Apple)...",
         "last_price": "最新價格",
         "range_52w": "52 週區間",
         "val_fwd_ttm": "估值倍數 (FWD / TTM)",
@@ -202,17 +237,11 @@ I18N = {
         "implied_cagr": "市場隱含未來 5 年 FCF 年化成長率 (CAGR)",
         "peers_title": "同業財務指標對比 (美元統一計價)",
         "news_title": "即時新聞 (即時財經串流)",
-        "no_news": "暫無即時新聞。",
-        "dialog_title": "THESTOCKs // 使用須知",
-        "dialog_intro": "本終端提供多市場行情、機構評等與量化財務估值。",
-        "dialog_feat1": "• 行情與預測：TradingView 圖表、分析師共識與目標價",
-        "dialog_feat2": "• 量化分析：杜邦拆解、營運週期 (CCC) 與逆向 DCF 模型",
-        "dialog_disclaimer": "聲明：所有數據僅供個人研究參考，非投資建議。",
-        "dialog_agree_btn": "同意並開始"
+        "no_news": "暫無即時新聞。"
     },
     "en": {
         "market_summary": "Market Overview",
-        "search_ph": "Search symbol, index, ticker (e.g. NVDA, AAPL, 2330, 0050)...",
+        "search_ph": "Search ticker or company (e.g. NVDA, TSMC, 0050, Apple)...",
         "last_price": "LAST PRICE",
         "range_52w": "52W RANGE",
         "val_fwd_ttm": "VALUATION (FWD / TTM)",
@@ -256,24 +285,58 @@ I18N = {
         "implied_cagr": "Implied 5-Year FCF Annualized CAGR",
         "peers_title": "PEER BENCHMARK (USD STANDARDIZED)",
         "news_title": "BREAKING WIRE (REAL-TIME STREAM)",
-        "no_news": "No feeds found.",
-        "dialog_title": "THESTOCKs // TERMS",
-        "dialog_intro": "Institutional terminal for market action and fundamental valuation.",
-        "dialog_feat1": "• Market: TradingView charting and Wall St consensus",
-        "dialog_feat2": "• Analytics: DuPont breakdown, CCC cycle, and Reverse DCF",
-        "dialog_disclaimer": "Notice: For research only. Not financial advice.",
-        "dialog_agree_btn": "Agree & Continue"
+        "no_news": "No feeds found."
     }
 }
+
+if "lang" not in st.session_state:
+    st.session_state.lang = "zh"
+
+col_brand, col_search, col_lang = st.columns([1.5, 4.5, 1])
+
+with col_lang:
+    current_lang_idx = 0 if st.session_state.lang == "zh" else 1
+    lang_btn = st.selectbox(
+        "LANG",
+        ["繁體中文", "English"],
+        index=current_lang_idx,
+        label_visibility="collapsed"
+    )
+    selected_lang = "zh" if lang_btn == "繁體中文" else "en"
+    if selected_lang != st.session_state.lang:
+        st.session_state.lang = selected_lang
+        st.rerun()
+
+curr_lang = st.session_state.lang
+T = I18N[curr_lang]
+
+with col_brand:
+    st.markdown("<div style='font-size: 1.35rem; font-weight: 800; color: #ffffff; letter-spacing: 0.05em; padding-top: 4px;'>THESTOCKs</div>", unsafe_allow_html=True)
+
+# 動態打字自動索引搜尋引擎
+with col_search:
+    display_options = [f"{sym} — {desc}" for sym, desc in INDEX_ITEMS]
+    selected_item = st.selectbox(
+        "SEARCH",
+        options=display_options,
+        index=0,
+        placeholder=T["search_ph"],
+        label_visibility="collapsed"
+    )
+    ticker = selected_item.split(" — ")[0].strip()
+
+# 自動處理交易所與台股格式
+if ":" in ticker:
+    ticker = ticker.split(":")[-1].strip()
+if ticker.isdigit() and len(ticker) in [4, 5]:
+    ticker = f"{ticker}.TW"
 
 def normalize_ticker(raw_input):
     sym = raw_input.strip().upper()
     if not sym:
         return "NVDA"
-    # 自動清除交易所前綴 (如 NASDAQ:TSLA -> TSLA, NYSE:WMT -> WMT)
     if ":" in sym:
         sym = sym.split(":")[-1].strip()
-    # 支援台股 4-5 位純數字
     if sym.isdigit() and len(sym) in [4, 5]:
         return f"{sym}.TW"
     return sym.replace(" ", "")
@@ -339,64 +402,6 @@ def safe_extract(df, candidate_keys):
                 s = s.iloc[0]
             return pd.to_numeric(s, errors="coerce")
     return pd.Series(dtype=float)
-
-if "terms_agreed" not in st.session_state:
-    st.session_state.terms_agreed = False
-
-if "lang" not in st.session_state:
-    st.session_state.lang = "zh"
-
-col_brand, col_search, col_lang = st.columns([1.5, 4.5, 1])
-
-with col_lang:
-    current_lang_idx = 0 if st.session_state.lang == "zh" else 1
-    lang_btn = st.selectbox(
-        "LANG",
-        ["繁體中文", "English"],
-        index=current_lang_idx,
-        label_visibility="collapsed"
-    )
-    selected_lang = "zh" if lang_btn == "繁體中文" else "en"
-    if selected_lang != st.session_state.lang:
-        st.session_state.lang = selected_lang
-        st.rerun()
-
-curr_lang = st.session_state.lang
-T = I18N[curr_lang]
-
-@st.dialog(T["dialog_title"])
-def show_welcome_dialog():
-    st.markdown(f"""
-    <div style="line-height: 1.5; color: #e5e7eb; font-size: 0.88rem;">
-        <p style="margin-bottom: 8px;">{T['dialog_intro']}</p>
-        <p style="margin-bottom: 4px; color: #9ca3af;">{T['dialog_feat1']}</p>
-        <p style="margin-bottom: 12px; color: #9ca3af;">{T['dialog_feat2']}</p>
-        <div style="font-size: 0.75rem; color: #6b7280; border-top: 1px solid #1f2937; padding-top: 8px; margin-bottom: 12px;">
-            {T['dialog_disclaimer']}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button(T["dialog_agree_btn"], use_container_width=True, type="primary"):
-        st.session_state.terms_agreed = True
-        st.rerun()
-
-if not st.session_state.terms_agreed:
-    show_welcome_dialog()
-
-with col_brand:
-    st.markdown("<div style='font-size: 1.35rem; font-weight: 800; color: #ffffff; letter-spacing: 0.05em; padding-top: 4px;'>THESTOCKs</div>", unsafe_allow_html=True)
-
-with col_search:
-    default_val = st.session_state.get("search_ticker", "NVDA")
-    search_input = st.text_input(
-        "SEARCH",
-        value=default_val,
-        placeholder=T["search_ph"],
-        label_visibility="collapsed"
-    )
-
-raw_val = search_input.strip() if search_input else ""
-ticker = normalize_ticker(raw_val) if raw_val else "NVDA"
 
 # 市場摘要折疊選單（預設收合）
 with st.expander(T['market_summary'], expanded=False):
@@ -1030,7 +1035,7 @@ with tab_peers_news:
             }
             st.dataframe(pdf.style.format(fmt, na_rep="-"), use_container_width=True)
 
-    # 即時真實財經新聞串流模組 (透過 Yahoo Finance API 動態拉取)
+    # 即時真實財經新聞串流模組
     st.markdown(f"<div class='oled-section-title'>{T['news_title']}</div>", unsafe_allow_html=True)
     real_news = []
     try:
