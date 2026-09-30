@@ -9,7 +9,7 @@ from datetime import datetime
 import time
 import urllib.parse
 import urllib.request
-import xml.etree.ElementTree as ET
+import json
 
 st.set_page_config(
     page_title="THESTOCKs // QUANT TERMINAL",
@@ -27,15 +27,6 @@ st.markdown("""
     section[data-testid="stSidebar"] {
         background-color: #050507 !important;
         border-right: 1px solid #141418 !important;
-    }
-    .market-section-title {
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: #ffffff;
-        margin-bottom: 12px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
     }
     .oled-header {
         background: #08080a;
@@ -122,7 +113,7 @@ st.markdown("""
     .oled-news-card {
         background: #08080a;
         border: 1px solid #16161b;
-        border-left: 2px solid #ffffff;
+        border-left: 2px solid #3b82f6;
         border-radius: 4px;
         padding: 12px 16px;
         margin-bottom: 10px;
@@ -210,8 +201,8 @@ I18N = {
         "g_term": "永續成長率 g (%)",
         "implied_cagr": "市場隱含未來 5 年 FCF 年化成長率 (CAGR)",
         "peers_title": "同業財務指標對比 (美元統一計價)",
-        "news_title": "即時新聞 (近 15 日)",
-        "no_news": "近 15 日內無重大即時新聞。",
+        "news_title": "即時新聞 (即時財經串流)",
+        "no_news": "暫無即時新聞。",
         "dialog_title": "THESTOCKs // 使用須知",
         "dialog_intro": "本終端提供多市場行情、機構評等與量化財務估值。",
         "dialog_feat1": "• 行情與預測：TradingView 圖表、分析師共識與目標價",
@@ -264,8 +255,8 @@ I18N = {
         "g_term": "Terminal Growth g (%)",
         "implied_cagr": "Implied 5-Year FCF Annualized CAGR",
         "peers_title": "PEER BENCHMARK (USD STANDARDIZED)",
-        "news_title": "BREAKING WIRE (15-DAY)",
-        "no_news": "No feeds found within 15 days.",
+        "news_title": "BREAKING WIRE (REAL-TIME STREAM)",
+        "no_news": "No feeds found.",
         "dialog_title": "THESTOCKs // TERMS",
         "dialog_intro": "Institutional terminal for market action and fundamental valuation.",
         "dialog_feat1": "• Market: TradingView charting and Wall St consensus",
@@ -279,11 +270,13 @@ def normalize_ticker(raw_input):
     sym = raw_input.strip().upper()
     if not sym:
         return "NVDA"
-    # 如果使用者輸入純數字 (台股代碼 4~5 碼)
+    # 自動清除交易所前綴 (如 NASDAQ:TSLA -> TSLA, NYSE:WMT -> WMT)
+    if ":" in sym:
+        sym = sym.split(":")[-1].strip()
+    # 支援台股 4-5 位純數字
     if sym.isdigit() and len(sym) in [4, 5]:
-        # 先以上市 (.TW) 優先，上櫃會在加載失敗時由錯誤處理補正
         return f"{sym}.TW"
-    return sym
+    return sym.replace(" ", "")
 
 @st.cache_data(ttl=600)
 def get_usd_twd_rate():
@@ -403,63 +396,56 @@ with col_search:
     )
 
 raw_val = search_input.strip() if search_input else ""
-if not raw_val:
-    ticker = "NVDA"
-else:
-    ticker = normalize_ticker(raw_val)
+ticker = normalize_ticker(raw_val) if raw_val else "NVDA"
 
-st.markdown(f"<div class='market-section-title'>{T['market_summary']} &rsaquo;</div>", unsafe_allow_html=True)
+# 市場摘要折疊選單（預設收合）
+with st.expander(T['market_summary'], expanded=False):
+    m_data = get_market_overview(lang=curr_lang)
+    if m_data:
+        cols = st.columns(len(m_data))
+        for i, m in enumerate(m_data):
+            with cols[i]:
+                is_m_up = m["chg_pct"] >= 0
+                m_color = "#00e676" if is_m_up else "#ff1744"
+                sign = "+" if is_m_up else ""
+                
+                fig_spark = go.Figure()
+                fig_spark.add_trace(go.Scatter(
+                    y=m["closes"],
+                    mode='lines',
+                    line=dict(color=m_color, width=1.5),
+                    hoverinfo='skip'
+                ))
+                fig_spark.update_layout(
+                    template="plotly_dark",
+                    height=60,
+                    margin=dict(l=0, r=0, t=2, b=2),
+                    paper_bgcolor="#08080a",
+                    plot_bgcolor="#08080a",
+                    xaxis=dict(visible=False),
+                    yaxis=dict(visible=False)
+                )
 
-m_data = get_market_overview(lang=curr_lang)
-if m_data:
-    cols = st.columns(len(m_data))
-    for i, m in enumerate(m_data):
-        with cols[i]:
-            is_m_up = m["chg_pct"] >= 0
-            m_color = "#00e676" if is_m_up else "#ff1744"
-            sign = "+" if is_m_up else ""
-            
-            fig_spark = go.Figure()
-            fig_spark.add_trace(go.Scatter(
-                y=m["closes"],
-                mode='lines',
-                line=dict(color=m_color, width=1.5),
-                hoverinfo='skip'
-            ))
-            fig_spark.update_layout(
-                template="plotly_dark",
-                height=60,
-                margin=dict(l=0, r=0, t=2, b=2),
-                paper_bgcolor="#08080a",
-                plot_bgcolor="#08080a",
-                xaxis=dict(visible=False),
-                yaxis=dict(visible=False)
-            )
-
-            st.markdown(f"""
-            <div style="background: #08080a; border: 1px solid #16161b; border-radius: 6px; padding: 10px 14px 2px 14px; margin-bottom: 4px;">
-                <div style="font-size: 0.72rem; color: #636773; font-weight: 600;">{m['name']} <span style="background:#16161b; padding:1px 4px; border-radius:2px; font-size:0.65rem;">{m['sub']}</span></div>
-                <div style="font-size: 1.15rem; font-weight: 800; font-family: monospace; color: #ffffff; margin-top: 2px;">
-                    {m['cur']:,.2f}
-                    <span style="font-size: 0.75rem; color: {m_color}; font-weight: 700; margin-left: 4px;">{sign}{m['chg_pct']:.2f}%</span>
+                st.markdown(f"""
+                <div style="background: #08080a; border: 1px solid #16161b; border-radius: 6px; padding: 10px 14px 2px 14px; margin-bottom: 4px;">
+                    <div style="font-size: 0.72rem; color: #636773; font-weight: 600;">{m['name']} <span style="background:#16161b; padding:1px 4px; border-radius:2px; font-size:0.65rem;">{m['sub']}</span></div>
+                    <div style="font-size: 1.15rem; font-weight: 800; font-family: monospace; color: #ffffff; margin-top: 2px;">
+                        {m['cur']:,.2f}
+                        <span style="font-size: 0.75rem; color: {m_color}; font-weight: 700; margin-left: 4px;">{sign}{m['chg_pct']:.2f}%</span>
+                    </div>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
-            st.plotly_chart(fig_spark, use_container_width=True, config={'displayModeBar': False, 'staticPlot': True})
+                """, unsafe_allow_html=True)
+                st.plotly_chart(fig_spark, use_container_width=True, config={'displayModeBar': False, 'staticPlot': True})
 
 st.markdown("<div style='border-bottom: 1px solid #141418; margin: 12px 0 16px 0;'></div>", unsafe_allow_html=True)
 
 is_index = ticker.startswith("^") or ticker in ["TAIEX", "IX0001", "NDX", "SPX", "SOX", "QQQ", "SPY", "SOXX"]
 
-if not ticker:
-    st.info("請於上方搜尋列輸入欲查詢的股票代碼 (例: NVDA, AAPL, 2330, 0050) 或點選市場摘要。" if curr_lang == "zh" else "Enter a symbol above (e.g. NVDA, AAPL, 2330, 0050) or select from Market Overview.")
-    st.stop()
-
 with st.spinner(f"Loading: {ticker}..."):
     try:
         stock, info, inc, bs, cf = load_equity_data(ticker)
         chart_1y, fast_info = load_price_history(ticker, period="1y")
-    except Exception as e:
+    except Exception:
         st.warning(f"查無標的代碼 [{ticker}]，請確認輸入是否正確。" if curr_lang == "zh" else f"Symbol [{ticker}] not found. Please verify ticker.")
         st.stop()
 
@@ -561,13 +547,10 @@ tab_analytics, tab_fundamentals, tab_valuation, tab_peers_news = st.tabs([
 with tab_analytics:
     st.markdown(f"<div class='oled-section-title'>{T['tv_title']}</div>", unsafe_allow_html=True)
     
-    
-    # 嚴格判斷是否為指數或 ETF (包含 ^TWII, ^NDX, ^GSPC, ^SOX, 0050, SPY, QQQ, SOXX 等)
     etf_keywords = ["0050", "0056", "006208", "00878", "00919", "00929", "SPY", "QQQ", "SOXX", "VOO", "IVV", "VTI", "VT", "SMH", "DIA", "IWM", "TAIEX"]
     is_etf_or_index = is_index or ticker.startswith("^") or any(k in ticker.upper() for k in etf_keywords)
 
     if is_etf_or_index:
-        # 指數與 ETF 採用 Yahoo Finance 原生數據，自繪 OLED 高清 K 線與成交量圖 (完全無 TradingView 限制)
         if not chart_1y.empty:
             df_k = chart_1y.copy()
             df_k["MA20"] = df_k["Close"].rolling(20).mean()
@@ -603,7 +586,6 @@ with tab_analytics:
         else:
             st.info("暫無即時 K 線行情數據。")
     else:
-        # 一般個股才載入 TradingView 官方 Widget
         clean_sym = ticker.replace("^", "").strip().upper()
         if ticker.endswith(".TW") or (ticker.isdigit() and len(ticker) in [4, 5]):
             tv_symbol = f"TWSE:{ticker.replace('.TW', '')}"
@@ -889,7 +871,6 @@ with tab_valuation:
 with tab_peers_news:
     st.markdown(f"<div class='oled-section-title'>{T['peers_title']}</div>", unsafe_allow_html=True)
     
-    # 判斷是否為 ETF 或指數
     etf_keywords = ["0050", "0056", "006208", "00878", "00919", "00929", "SPY", "QQQ", "SOXX", "VOO", "IVV", "VTI", "VT", "SMH"]
     is_curr_etf = info.get("quoteType") in ["ETF", "MUTUALFUND"] or ticker.startswith("^") or any(k in ticker for k in etf_keywords)
 
@@ -936,29 +917,17 @@ with tab_peers_news:
         if etf_records:
             st.dataframe(pd.DataFrame(etf_records).set_index(list(etf_records[0].keys())[0]), use_container_width=True)
     else:
-        # 真實產業對標庫 (依各行業細分龍頭)
         INDUSTRY_MAP = {
-            # 運動運動鞋服與流行休閒
             "FOOTWEAR_APPAREL": ["NKE", "LULU", "DECK", "SKX", "UAA"],
-            # 串流影視娛樂與傳媒
             "MEDIA_ENTERTAINMENT": ["NFLX", "DIS", "WBD", "CMCSA", "PARA"],
-            # 半導體 IC 設計與晶圓代工
             "SEMICONDUCTORS": ["NVDA", "TSM", "AMD", "AVGO", "QCOM", "INTC", "2330.TW", "2454.TW"],
-            # 消費電子與個人電腦硬體
             "HARDWARE": ["AAPL", "DELL", "HPQ", "2317.TW", "MSI.TW"],
-            # 企業軟體與雲端運算
             "SOFTWARE": ["MSFT", "ORCL", "CRM", "SAP", "ADBE", "NOW"],
-            # 網路電商與數位廣告
             "INTERNET_RETAIL": ["AMZN", "BABA", "PDD", "EBAY", "MELI"],
-            # 社交媒體與網路服務
             "SOCIAL_MEDIA": ["META", "GOOGL", "SNAP", "PINS"],
-            # 電動車與傳統汽車製造
             "AUTOMOTIVE": ["TSLA", "TM", "BYDDF", "GM", "F", "RIVN"],
-            # 餐飲速食與連鎖咖啡
             "RESTAURANTS": ["MCD", "SBUX", "YUM", "CMG", "QSR"],
-            # 全球銀行與金融服務
             "BANKS": ["JPM", "BAC", "WFC", "C", "MS", "GS", "2881.TW", "2882.TW"],
-            # 製藥與生技醫療
             "HEALTHCARE": ["LLY", "NVO", "JNJ", "PFE", "ABBV", "MRK"]
         }
 
@@ -966,7 +935,6 @@ with tab_peers_news:
         cur_ind = (info.get("industry") or "").lower()
         cur_sec = (info.get("sector") or "").lower()
 
-        # 智能匹配所屬產業
         matched_peers = None
         if target_sym in ["NKE", "LULU", "DECK", "SKX", "UAA", "ADDYY"] or "footwear" in cur_ind or "apparel" in cur_ind:
             matched_peers = INDUSTRY_MAP["FOOTWEAR_APPAREL"]
@@ -989,10 +957,8 @@ with tab_peers_news:
         elif target_sym.endswith(".TW") or target_sym.endswith(".TWO"):
             matched_peers = ["2330.TW", "2317.TW", "2454.TW", "2382.TW", "2308.TW"]
         else:
-            # 預設通用產業
             matched_peers = [target_sym, "AAPL", "MSFT", "GOOGL", "AMZN"]
 
-        # 組合同業清單 (本股票置頂，其餘取前 4 檔真實同行)
         final_peers = [target_sym] + [p for p in matched_peers if p != target_sym][:4]
 
         peer_records = []
@@ -1003,14 +969,12 @@ with tab_peers_news:
                 p_fast = dict(ps.fast_info)
                 p_curr = p_inf.get("currency") or ("TWD" if ".TW" in p_sym else "USD")
 
-                # 正確美元市值計算：美股直接除以 1e9，台股才除以 USD_TWD
                 raw_mcap = p_fast.get("marketCap") or p_inf.get("marketCap", 0)
                 if p_curr == "TWD":
                     mcap_usd = (raw_mcap / USD_TWD) / 1e9 if raw_mcap else np.nan
                 else:
                     mcap_usd = (raw_mcap / 1e9) if raw_mcap else np.nan
 
-                # 官方滾動最新 TTM 比率
                 gm_val = p_inf.get("grossMargins")
                 gm_val = gm_val * 100 if gm_val is not None else np.nan
 
@@ -1022,7 +986,6 @@ with tab_peers_news:
 
                 fwd_pe = p_inf.get("forwardPE", np.nan)
 
-                # FCF/NI (最新年度)
                 fcf_ni = np.nan
                 try:
                     cfo = safe_extract(ps.cashflow, ["Operating Cash Flow", "OperatingCashFlow"]).iloc[0]
@@ -1067,21 +1030,48 @@ with tab_peers_news:
             }
             st.dataframe(pdf.style.format(fmt, na_rep="-"), use_container_width=True)
 
+    # 即時真實財經新聞串流模組 (透過 Yahoo Finance API 動態拉取)
     st.markdown(f"<div class='oled-section-title'>{T['news_title']}</div>", unsafe_allow_html=True)
-    live_news = [
-        {"ticker": ticker, "title": f"{ticker} 即時盤勢走勢與機構流向監測", "link": f"https://finance.yahoo.com/quote/{ticker}", "publisher": "Reuters Wire", "time_str": "即時"},
-        {"ticker": "GLOBAL", "title": "全球半導體製程擴產與伺服器供應鏈資本支出指引 (15天動態)", "link": "https://finance.yahoo.com", "publisher": "Bloomberg Feed", "time_str": "近期"}
-    ]
-    n_col1, n_col2 = st.columns(2)
-    for i, item in enumerate(live_news):
-        target_col = n_col1 if i % 2 == 0 else n_col2
-        with target_col:
-            st.markdown(f"""
-            <div class="oled-news-card">
-                <a href="{item['link']}" target="_blank" class="oled-news-title">{item['title']}</a>
-                <div class="oled-news-meta">
-                    <span style="color: #ffffff; font-weight: bold;">[{item['ticker']}]</span> 
-                    • {item['publisher']} • {item['time_str']}
+    real_news = []
+    try:
+        clean_news_sym = ticker.split(".")[0] if ticker.endswith(".TW") else ticker
+        query_encoded = urllib.parse.quote(clean_news_sym)
+        api_url = f"https://query2.finance.yahoo.com/v1/finance/search?q={query_encoded}&newsCount=6"
+        req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            data = json.loads(resp.read().decode('utf-8', errors='ignore'))
+            for n in data.get("news", []):
+                real_news.append({
+                    "title": n.get("title", ""),
+                    "publisher": n.get("publisher", "Wire"),
+                    "link": n.get("link", f"https://finance.yahoo.com/quote/{ticker}"),
+                    "time_str": "即時"
+                })
+    except Exception:
+        try:
+            for n in (stock.news or [])[:6]:
+                real_news.append({
+                    "title": n.get("title", ""),
+                    "publisher": n.get("publisher", "Yahoo Finance"),
+                    "link": n.get("link", "#"),
+                    "time_str": "近期"
+                })
+        except Exception:
+            pass
+
+    if real_news:
+        n_col1, n_col2 = st.columns(2)
+        for i, item in enumerate(real_news):
+            target_col = n_col1 if i % 2 == 0 else n_col2
+            with target_col:
+                st.markdown(f"""
+                <div class="oled-news-card">
+                    <a href="{item['link']}" target="_blank" class="oled-news-title">{item['title']}</a>
+                    <div class="oled-news-meta">
+                        <span style="color: #3b82f6; font-weight: bold;">[{ticker}]</span> 
+                        • {item['publisher']} • {item['time_str']}
+                    </div>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+    else:
+        st.info(T["no_news"])
