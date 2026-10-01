@@ -13,6 +13,7 @@ import json
 
 st.set_page_config(
     page_title="THESTOCKs // QUANT TERMINAL",
+    page_icon="icon.svg",
     layout="wide",
     initial_sidebar_state="collapsed"
 )

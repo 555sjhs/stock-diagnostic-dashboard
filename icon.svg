@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="tMatteGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2a2b32"/>
+      <stop offset="60%" stop-color="#18191f"/>
+      <stop offset="100%" stop-color="#0f1014"/>
+    </linearGradient>
+    <linearGradient id="edgeGleam" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3d404a"/>
+      <stop offset="100%" stop-color="#141519"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#000000"/>
+  <path d="M 124 148 L 388 148 L 388 212 L 288 212 L 288 384 L 224 384 L 224 212 L 124 212 Z" fill="url(#tMatteGrad)" stroke="url(#edgeGleam)" stroke-width="2"/>
+</svg>
